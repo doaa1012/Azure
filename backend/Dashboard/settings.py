@@ -208,9 +208,6 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 
-# Google OAuth2 credentials
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '496117091742-gqvdlfdel6t7lud9pgpt0t6lq20e9g0j.apps.googleusercontent.com'
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
 
 # URL where users will be redirected after login
 LOGIN_REDIRECT_URL = '/'
