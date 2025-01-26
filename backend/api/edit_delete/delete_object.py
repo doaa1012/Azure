@@ -18,11 +18,11 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from rest_framework import status
 
-
 @csrf_exempt
 def delete_object(request, object_id):
     """
-    Deletes an Objectinfo instance, its linked objects, and associated data.
+    Deletes an Objectinfo instance only if it is referenced (LinkedObjectId) but not associated (ObjectId).
+    Prevents deletion if the object is associated in the Objectlinkobject table.
     """
     if request.method != 'DELETE':
         return JsonResponse(
@@ -53,41 +53,35 @@ def delete_object(request, object_id):
         return JsonResponse({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 
     try:
+        # Check if the object is associated (in ObjectId) or referenced (in LinkedObjectId)
+        associated_objects = Objectlinkobject.objects.filter(objectid=object_id)
+        referenced_objects = Objectlinkobject.objects.filter(linkedobjectid=object_id)
+
+        if associated_objects.exists():
+            return JsonResponse(
+                {'error': 'Object cannot be deleted as it is associated with other objects'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # If it is only referenced, it can be deleted
+        if referenced_objects.exists():
+            referenced_objects.delete()  # Clean up references if necessary
+
+        # Delete dependent properties and the object itself
         with transaction.atomic():
-            # Handle dependent Objectlinkobject entries
-            linked_objects = Objectlinkobject.objects.filter(objectid=object_id)
-            print(f"Deleting {linked_objects.count()} linked objects for object_id={object_id}")
-            linked_objects.delete()
-
-            # Delete dependent compositions and samples
-            try:
-                sample = Sample.objects.get(sampleid=object_id)
-                print(f"Deleting Sample with sampleid={sample.sampleid}")
-                Composition.objects.filter(sampleid=sample).delete()
-                sample.delete()
-            except Sample.DoesNotExist:
-                print(f"No Sample found for object_id={object_id}. Skipping Sample/Composition deletion.")
-
-            # Delete dependent properties
             Propertyfloat.objects.filter(objectid=object_id).delete()
             Propertystring.objects.filter(objectid=object_id).delete()
             Propertyint.objects.filter(objectid=object_id).delete()
 
-            # Delete the object itself
+            # Delete the Objectinfo instance
             obj = Objectinfo.objects.get(objectid=object_id)
-            print(f"Deleting Objectinfo with object_id={object_id}")
             obj.delete()
 
-        return JsonResponse({'message': 'Object and related records deleted successfully'}, status=status.HTTP_200_OK)
+        return JsonResponse({'message': 'Object deleted successfully'}, status=status.HTTP_200_OK)
 
     except Objectinfo.DoesNotExist:
-        print(f"Objectinfo with object_id={object_id} not found.")
         return JsonResponse({'error': 'Object not found'}, status=status.HTTP_404_NOT_FOUND)
     except IntegrityError as e:
-        print(f"Database integrity error: {str(e)}")
         return JsonResponse({'error': f'Database integrity error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        print(f"Error deleting object: {error_details}")
         return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,85 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {useAuth, AuthProvider} from '../../AuthContext';
+import jwt_decode from 'jwt-decode';
+import { useAuth } from '../../AuthContext';
+
 const Navbar = () => {
   const [isReportsDropdownOpen, setIsReportsDropdownOpen] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState('Loading...');
+  const [currentUserName, setCurrentUserName] = useState('User');
   const navigate = useNavigate();
-  const { logout } = useAuth();  // Use logout function from AuthContext
+  const { logout } = useAuth();
 
-  // Toggle dropdown visibility
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          const decoded = jwt_decode(storedToken);
+          if (decoded.user_id) {
+            const response = await axios.get('http://127.0.0.1:8000/api/users/', {
+              headers: { Authorization: `Bearer ${storedToken}` },
+            });
+            const currentUser = response.data.find(
+              (user) => user.id === decoded.user_id
+            );
+            if (currentUser) {
+              setCurrentUserEmail(currentUser.email || 'No Email Found');
+              const firstName = currentUser.email.split('@')[0];
+              setCurrentUserName(firstName.charAt(0).toUpperCase() + firstName.slice(1));
+            } else {
+              setCurrentUserName('User Not Found');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user email:', error);
+          setCurrentUserName('Error');
+        }
+      } else {
+        setCurrentUserName('No Token');
+      }
+    };
+
+    fetchUserEmail();
+  }, []);
+
   const toggleReportsDropdown = () => {
-    setIsReportsDropdownOpen(!isReportsDropdownOpen);
+    setIsReportsDropdownOpen((prev) => !prev);
   };
 
-  // Handle Logout
   const handleLogout = async () => {
     try {
-      // Send POST request to logout API
-      await axios.post('http://127.0.0.1:8000/api/logout/', {}, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        withCredentials: true,  // Ensure cookies/sessions are handled properly
-      });
-
-      // Clear any authentication state (e.g., tokens)
-      localStorage.removeItem('authToken');  // Assuming authToken is stored in localStorage
-
-      // Call the logout function from AuthContext to update the authentication state
-      logout();  // Clears the authentication state globally
-
-      // Redirect to the welcome page
-      navigate('/start', { replace: true });  // Prevent back navigation to protected pages
+      await axios.post(
+        'http://127.0.0.1:8000/api/logout/',
+        {},
+        {
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true,
+        }
+      );
+      localStorage.removeItem('token');
+      logout();
+      navigate('/start', { replace: true });
     } catch (error) {
       console.error('Logout failed:', error);
-      alert('Logout failed, please try again.');
+      alert('Logout failed. Please try again.');
     }
   };
+
   return (
     <nav className="fixed top-0 right-0 z-50 py-2 px-4">
-      <div className="flex justify-center items-center space-x-4 rounded-full bg-[#e3f2fd] shadow-md py-1 px-4">
-        <Link to="/" className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300">
+      <div className="flex justify-center items-center space-x-3 rounded-full bg-[#e3f2fd] shadow-md py-1 px-4">
+        <Link
+          to="/"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
           CRC 1625
         </Link>
-        <span className="text-xl text-orange-600">|</span>
-        <Link to="/search" className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300">
+        <span className="text-base text-orange-600">|</span>
+        <Link
+          to="/search"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
           Search
         </Link>
-        <span className="text-xl text-orange-600">|</span>
-        <Link to="/list-of-objects" className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300">
+        <span className="text-base text-orange-600">|</span>
+        <Link
+          to="/list-of-objects"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
           Create Object
         </Link>
-        <span className="text-xl text-orange-600">|</span>
-        <Link to="/SampleTable" className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300">
+        <span className="text-base text-orange-600">|</span>
+        <Link
+          to="/SampleTable"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
           Sample Progress Overview
         </Link>
-        <span className="text-xl text-orange-600">|</span>
-        <Link to="/workflows" className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300">
+        <span className="text-base text-orange-600">|</span>
+        <Link
+          to="/workflows"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
           Workflows
         </Link>
-        <span className="text-xl text-orange-600">|</span>
-
-        {/* Reports Dropdown */}
+        <span className="text-base text-orange-600">|</span>
         <div className="relative">
           <button
             onClick={toggleReportsDropdown}
-            className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300 focus:outline-none"
+            className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300 focus:outline-none"
           >
             Reports
           </button>
-          
-          {/* Add margin to separate the logout link */}
-          <span className="text-xl text-orange-600 mx-4">|</span>
-          <button
-            onClick={handleLogout}
-            className="text-2xl font-bold hover:text-orange-600 transition-colors duration-300 focus:outline-none"
-          >
-            Log Out
-          </button>
-
-          {/* Dropdown menu */}
-          {isReportsDropdownOpen && (
+               {/* Dropdown menu */}
+               {isReportsDropdownOpen && (
             <div className="absolute right-0 mt-2 bg-white shadow-lg rounded-md py-2">
               <Link
                 to="/reports"
@@ -130,9 +164,29 @@ const Navbar = () => {
             </div>
           )}
         </div>
+        <span className="text-base text-orange-600 mx-2">|</span>
+
+        {/* User Tab */}
+        <Link
+          to="/identity"
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300"
+        >
+          {currentUserName}
+        </Link>
+
+        <span className="text-base text-orange-600">|</span>
+
+        {/* Logout Tab */}
+        <button
+          onClick={handleLogout}
+          className="text-xl font-semibold hover:text-orange-600 transition-colors duration-300 focus:outline-none"
+        >
+          Log Out
+        </button>
       </div>
     </nav>
   );
 };
 
 export default Navbar;
+

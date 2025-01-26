@@ -8,6 +8,7 @@ from .create_object import create_object
 from .Registration import login_user
 from .Registration import Register_user
 from .Registration import logout_user
+from .Registration import get_current_user
 from .create_object import get_rubric_by_url
 from .create_object import Rubricinfo_container
 from .create_object import get_typeinfo
@@ -116,6 +117,17 @@ urlpatterns = [
     path('auth/', include('social_django.urls', namespace='social')),
     path('api/object_search/', object_search_view.object_search_view, name='object_search_view'),
     path('api/ideas_and_experiments_measurement/', ideas_and_experiments_measurement.ideas_and_experiments_measurement, name='ideas_and_experiments_measurement'),
+    path('api/current_user/', get_current_user.get_current_user, name='current_user'),
+
+    path('api/user-profile/', get_current_user.user_profile, name='user_profile'),
+    path('api/update_profile/', get_current_user.update_profile, name='update_profile'),
+    path('api/update-email/', get_current_user.update_email, name='update_email'),
+    path('api/update-password/', get_current_user.update_password, name='update_password'),
+
+    path('api/update-two-factor-auth/', get_current_user.update_two_factor_auth, name='update_two_factor_auth'),
+    path('api/personal-data/', get_current_user.personal_data, name='personal_data'),
+    path('api/delete-account/', get_current_user.delete_account, name='delete_account'),
+
 ]
 
 

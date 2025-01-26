@@ -38,83 +38,97 @@ function ObjectInfoList() {
   
   useEffect(() => {
     const token = localStorage.getItem('token');
+    let decodedUserId = null;
+  
+    // Decode token and set current user
     if (token) {
       const decoded = jwt_decode(token);
       console.log('Current User:', decoded.user_id);
       setCurrentUser(decoded.user_id);
+      decodedUserId = decoded.user_id; // Store decoded user ID for use in the request
     }
-
+  
     console.log('Rubric Path:', rubricPath);
-
-    fetch(`${config.BASE_URL}api/get-rubricinfo-by-path/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ rubricpath: rubricPath }),
-    })
-      .then(response => {
-        console.log('API Response Status:', response.status);
-        return response.json();
+  
+    // Only send the request if the user ID is available
+    if (decodedUserId) {
+      fetch(`${config.BASE_URL}api/get-rubricinfo-by-path/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rubricpath: rubricPath, user_id: decodedUserId }), // Include user_id in the request
       })
-      .then(data => {
-        console.log('API Response Data:', data);
-
-        const rubricData = data.rubric_data || [];
-        const objectData = data.object_data || [];
-
-        console.log('Rubric Data Received:', rubricData);
-        console.log('Object Data Received:', objectData);
-
-        if (!Array.isArray(rubricData) || !Array.isArray(objectData)) {
-          console.error('Invalid API response structure:', { rubricData, objectData });
-          return;
-        }
-
-        // Group rubric data
-        const grouped = rubricData.reduce((acc, obj) => {
-          const path = obj.RubricPath?.toLowerCase();
-          const normalizedRubricPath = rubricPath.toLowerCase();
-
-          if (path && path.includes(`${normalizedRubricPath}}`)) {
-            const key = path.split(`${normalizedRubricPath}}`)[1]?.split('}')[0];
-            if (key) {
-              if (!acc[key]) {
-                acc[key] = [];
-              }
-              acc[key].push({
-                ...obj,
-                created_by: obj.CreatedBy,
-              });
-            } else {
-              console.warn('Failed to extract key from RubricPath:', path);
-            }
-          } else {
-            console.warn('RubricPath does not match the expected format:', {
-              path,
-              normalizedRubricPath,
-            });
+        .then(response => {
+          console.log('API Response Status:', response.status);
+          return response.json();
+        })
+        .then(data => {
+          console.log('API Response Data:', data);
+  
+          const rubricData = data.rubric_data || [];
+          const objectData = data.object_data || [];
+  
+          console.log('Rubric Data Received:', rubricData);
+          console.log('Object Data Received:', objectData);
+  
+          if (!Array.isArray(rubricData) || !Array.isArray(objectData)) {
+            console.error('Invalid API response structure:', { rubricData, objectData });
+            return;
           }
-          return acc;
-        }, {});
-
-        console.log('Grouped Rubric Data:', grouped);
-
-        // Filter objects related to the grouped rubric data
-        const filteredObjectData = objectData.filter(obj =>
-          rubricData.some(rubric => rubric.RubricID === obj.RubricID)
-        );
-
-        console.log('Filtered Object Data:', filteredObjectData);
-
-        setGroupedData(grouped);
-        setRelatedObjects(filteredObjectData); // Store filtered objects
-        setProjectTitle(area); // Set project title dynamically
-      })
-      .catch(error => {
-        console.error('Error fetching rubric info:', error);
-      });
+  
+          // Group rubric data
+          const grouped = rubricData.reduce((acc, obj) => {
+            const path = obj.RubricPath?.toLowerCase();
+            const normalizedRubricPath = rubricPath.toLowerCase();
+  
+            if (path && path.includes(`${normalizedRubricPath}}`)) {
+              const key = path.split(`${normalizedRubricPath}}`)[1]?.split('}')[0];
+              if (key) {
+                if (!acc[key]) {
+                  acc[key] = [];
+                }
+                acc[key].push({
+                  ...obj,
+                  created_by: obj.CreatedBy,
+                });
+              } else {
+                console.warn('Failed to extract key from RubricPath:', path);
+              }
+            } else {
+              console.warn('RubricPath does not match the expected format:', {
+                path,
+                normalizedRubricPath,
+              });
+            }
+            return acc;
+          }, {});
+  
+          console.log('Grouped Rubric Data:', grouped);
+  
+          // Filter objects based on access control
+          const filteredObjectData = objectData.filter(obj => 
+            obj.AccessControl === 0 || // Public objects
+            obj.AccessControl === 1 || // Protected objects
+            obj.AccessControl === 2 || // Protected NDA objects
+            (obj.AccessControl === 3 && obj.CreatedBy === decodedUserId) // Private objects visible only to the creator
+          );
+  
+          console.log('Filtered Object Data:', filteredObjectData);
+  
+          setGroupedData(grouped);
+          setRelatedObjects(filteredObjectData); // Store filtered objects
+          setProjectTitle(area); // Set project title dynamically
+        })
+        .catch(error => {
+          console.error('Error fetching rubric info:', error);
+        });
+    } else {
+      console.error('User ID is not available. Request aborted.');
+    }
   }, [rubricPath, area]);
+  
+  
 
   const handleDelete = (rubricId) => {
     setGroupedData(prevGroupedData => {
@@ -262,9 +276,6 @@ function ObjectInfoList() {
               </div>
             </div>
           )}
-
-
-
           {/* Buttons for creating new items */}
           <div className="flex justify-center gap-5 mt-10">
             <Link to={`/create/new_container/${projectTitle}`} className="no-underline">

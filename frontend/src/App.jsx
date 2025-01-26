@@ -11,7 +11,6 @@ import GroupDetail from './components/A/A01/GroupDetail';
 import ObjectDetail from './components/A/A01/ObjectDetail';
 import PeriodicTableSearch from './components/PeriodicTableElements/PeriodicTableSearch';
 import WorkflowTable from './components/WorkflowStage';
-
 import ElementCompositionReport from './components/Reports/ElementCompositionReport'
 import SampleTable from './components/Samples/SampleTable';
 import MonthlyObjectIncrease from './components/Reports/MonthlyObjectIncrease';
@@ -44,6 +43,7 @@ import DragAndDropFileUploadProperty from './components/Create_object/DragAndDro
 import EditRubricChild from './components/edit_delete/EditChild';
 import { useAuth, AuthProvider } from './components/AuthContext';
 import EditPropertyPage from './components/edit_delete/EditPropertyPage';
+import AccountSettings from './components/Account_setting/AccountSettings';
 
 
 function App() {
@@ -56,8 +56,10 @@ function App() {
           <Route path="/start" element={<WelcomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          
           <Route element={<MainLayout />}>
             <Route path="/" element={isAuthenticated ? <Home /> : <Navigate to="/start" />} />
+            <Route path="/identity" element={isAuthenticated ? <AccountSettings /> : <Navigate to="/start" />} />
             <Route path="/search" element={isAuthenticated ? <PeriodicTableSearch /> : <Navigate to="/start" />} />
             <Route path="/reports" element={isAuthenticated ? <ElementCompositionReport /> : <Navigate to="/start" />} />
             <Route path="/MonthlyObjectIncrease" element={isAuthenticated ? <MonthlyObjectIncrease /> : <Navigate to="/start" />} />

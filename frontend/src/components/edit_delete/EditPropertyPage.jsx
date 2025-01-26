@@ -16,7 +16,7 @@ const EditPropertyPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [successMessage, setSuccessMessage] = useState('');
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -43,7 +43,7 @@ const EditPropertyPage = () => {
           name: data.name || '',
           value: data.value || '',
           valueEpsilon: data.valueEpsilon || '',
-          sortCode: data.sortCode || '',
+          sortCode: data.sortCode !== null && data.sortCode !== undefined ? data.sortCode : '', // Explicitly handle 0 or default
           row: data.row || '',
           comment: data.comment || '',
           propertyType: data.type , 

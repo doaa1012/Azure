@@ -28,29 +28,35 @@ function GroupDetail() {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem('token'); // Retrieve token from local storage
+    const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+  
     fetch(`${config.BASE_URL}api/objectinfo/${encodeURIComponent(RubricNameUrl)}/`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Error fetching data: ${response.statusText}`);
+        }
+        return response.json();
+      })
       .then((data) => {
         if (data.length > 0) {
           // Assuming Rubric Name is the same for all objects
           setRubricName(data[0]?.['Rubric Name'] || RubricNameUrl); // Use RubricNameUrl as a fallback
         }
-
+  
         const categorizedData = {};
         data.forEach((obj) => {
           obj.Objects.forEach((innerObj) => {
             const typeName = innerObj?.['Type Info']?.['Type Name'] || 'Unknown Type';
             if (typeName.toLowerCase() === 'composition') {
               const measurementArea = extractMeasurementArea(obj['Rubric Path']);
-
+  
               if (!categorizedData[typeName]) categorizedData[typeName] = {};
               if (!categorizedData[typeName][measurementArea]) categorizedData[typeName][measurementArea] = [];
-
+  
               categorizedData[typeName][measurementArea].push({
                 'Rubric ID': obj['Rubric ID'],
                 'Object ID': innerObj['Object ID'],
@@ -74,15 +80,14 @@ function GroupDetail() {
       })
       .catch((error) => console.error('Error fetching group data:', error));
   }, [RubricNameUrl]);
-
-  const extractMeasurementArea = (rubricPath) => {
+  
+  // Helper function to extract the measurement area from the rubric path
+ const extractMeasurementArea = (rubricPath) => {
 
     // Match the number followed by "Measurement Areas"
     const matches = rubricPath.match(/\b\d+\b\sMeasurement\sAreas/);
     return matches ? matches[0] : 'Unknown Area';
   };
-
-
 
   const toggleSection = (typeName) => setOpenSection(prevSection => (prevSection === typeName ? '' : typeName));
 

@@ -29,24 +29,44 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 logger = logging.getLogger(__name__)
 BASE_FILE_PATH = settings.BASE_FILE_PATH  
+
+ACCESS_CONTROL_MAP = {
+    'public': 0,
+    'protected': 1,
+    'protectednda': 2,
+    'private': 3
+}
+
+
+    
 @csrf_exempt
 def get_rubricinfo_by_path(request):
     if request.method == "POST":
         try:
-            # Parse the rubricpath from the request body
+            # Parse the rubricpath and user_id from the request body
             request_data = json.loads(request.body)
             rubricpath = request_data.get('rubricpath')
+            user_id = request_data.get('user_id')  # User ID passed from the frontend
             
             if not rubricpath:
                 return JsonResponse({'error': 'RubricPath is required'}, status=400)
+            if not user_id:
+                return JsonResponse({'error': 'User ID is required'}, status=400)
 
             # Query the Rubricinfo model for the specified RubricPath
             rubric_info = Rubricinfo.objects.filter(rubricpath=rubricpath).first()
             if not rubric_info:
                 return JsonResponse({'error': 'No RubricInfo found for the specified RubricPath'}, status=404)
 
-            # Fetch related Objectinfo records
-            related_objects = Objectinfo.objects.filter(rubricid=rubric_info.rubricid).select_related('typeid')
+            # Fetch related Objectinfo records with access control logic
+            related_objects = Objectinfo.objects.filter(
+                rubricid=rubric_info.rubricid
+            ).filter(
+                Q(accesscontrol=0) |  # Public objects
+                Q(accesscontrol=1) |  # Protected objects
+                Q(accesscontrol=2) |  # Protected NDA objects
+                Q(accesscontrol=3, field_createdby_id=user_id)  # Private objects visible only to the creator
+            ).select_related('typeid')
 
             # Fetch all matching Rubricinfo records
             rubric_infos = Rubricinfo.objects.filter(rubricpath__icontains=rubricpath)
@@ -58,12 +78,13 @@ def get_rubricinfo_by_path(request):
                     'RubricName': rubric.rubricname,
                     'RubricNameUrl': rubric.rubricnameurl,
                     'RubricPath': rubric.rubricpath,
-                    'CreatedBy': rubric.field_createdby_id
+                    'CreatedBy': rubric.field_createdby_id,
+                    'AccessControl': rubric.accesscontrol  # Include access control in response
                 }
                 for rubric in rubric_infos
             ]
 
-            # Prepare the object data with type info
+            # Prepare the object data with type info and access control
             object_data = [
                 {
                     'ObjectID': obj.objectid,
@@ -72,7 +93,8 @@ def get_rubricinfo_by_path(request):
                     'RubricID': obj.rubricid_id,
                     'CreatedBy': obj.field_createdby_id,
                     'TypeID': obj.typeid.typeid,
-                    'TypeName': obj.typeid.typename
+                    'TypeName': obj.typeid.typename,
+                    'AccessControl': obj.accesscontrol  # Include access control in response
                 }
                 for obj in related_objects
             ]
@@ -86,15 +108,39 @@ def get_rubricinfo_by_path(request):
 
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+import jwt
+from .models import Objectinfo, Sample, Objectlinkrubric, Objectlinkobject
 
 @csrf_exempt
 def objectinfo_list(request, rubricnameurl):
     if request.method == "GET":
         try:
+            # Retrieve the user_id from the token or request headers
+            token = request.headers.get('Authorization', '').split('Bearer ')[-1]
+            user_id = None
+            if token:
+                try:
+                    decoded = jwt.decode(token, options={"verify_signature": False})
+                    user_id = decoded.get('user_id')
+                except Exception as e:
+                    return JsonResponse({'error': f'Invalid token: {str(e)}'}, status=401)
+
+            # Ensure user_id is available
+            if not user_id:
+                return JsonResponse({'error': 'User ID is required for private object access'}, status=400)
+
             # Filter Objectinfo based on rubricnameurl
             object_info = Objectinfo.objects.select_related('rubricid', 'field_createdby') \
-                                            .filter(rubricid__rubricnameurl__icontains=rubricnameurl)
-
+                                            .filter(rubricid__rubricnameurl__icontains=rubricnameurl) \
+                                            .filter(
+                                                Q(accesscontrol=0) |  # Public objects
+                                                Q(accesscontrol=1) |  # Protected objects
+                                                Q(accesscontrol=2) |  # Protected NDA objects
+                                                Q(accesscontrol=3, field_createdby_id=user_id)  # Private objects visible only to the creator
+                                            )
             seen_rubricids = {}
 
             # Prepare the main data structure for the response
@@ -105,7 +151,7 @@ def objectinfo_list(request, rubricnameurl):
                 if rubric_id not in seen_rubricids:
                     seen_rubricids[rubric_id] = {
                         'Rubric ID': rubric_id,
-                        'Rubric Name': obj.rubricid.rubricname if obj.rubricid else None,  # Add RubricName
+                        'Rubric Name': obj.rubricid.rubricname if obj.rubricid else None,
                         'Rubric Name URL': obj.rubricid.rubricnameurl if obj.rubricid else None,
                         'Rubric Path': obj.rubricid.rubricpath if obj.rubricid else None,
                         'Objects': [],

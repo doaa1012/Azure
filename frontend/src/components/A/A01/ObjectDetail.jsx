@@ -13,6 +13,7 @@ import DeleteProperty from '../../edit_delete/DeleteProperty';
 import AddPropertyModal from '../../Create_object/AddPropertyModal';
 import AddProcessingStep from './AddProcessingStep';
 import IdeasAndExperimentsMeasurement from './IdeasAndExperimentsMeasurement';
+import LsvsViewer from './LsvsViewer';
 import SplitSample from "./SplitSample";
 import config from '../../../config_path';
 import { FaEdit } from 'react-icons/fa';
@@ -23,6 +24,7 @@ function ObjectDetail() {
   const [objectData, setObjectData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const [isAssociatedOpen, setIsAssociatedOpen] = useState(false);
   const [isReferencedOpen, setIsReferencedOpen] = useState(false);
   const [showAddPropertyModal, setShowAddPropertyModal] = useState(false);
@@ -32,6 +34,11 @@ function ObjectDetail() {
   const [showChooseUploadOption, setShowChooseUploadOption] = useState(false);
   const [measurementOpen, setMeasurementOpen] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
+  const [lsvsData, setLsvsData] = useState({});
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+
+
+
   const isIdeasOrExperiment = objectData?.Type?.TypeName?.toLowerCase() === 'ideas or experiment plans';
 
   const navigate = useNavigate();
@@ -92,7 +99,9 @@ function ObjectDetail() {
     console.log(`Object with ID ${deletedId} deleted successfully.`);
     navigate('/'); // Redirect after deletion
   };
-
+  const handleDeleteError = (errorMessage) => {
+    setDeleteError(errorMessage); // Update delete error state
+  };
   const handleLsvsSubmit = (params) => {
     // Add your LSV submission logic here
   };
@@ -171,47 +180,88 @@ function ObjectDetail() {
         {(objectData?.Name || 'Unknown Object').toUpperCase()}
       </h1>
 
+      {/* MAIN CARD */}
       <div className="object-detail-info bg-white p-6 rounded-lg shadow-lg mb-6">
-        <p><strong>Type:</strong> {objectData?.Type?.TypeName || 'Unknown'}</p>
-        <p><strong>ObjectId:</strong> {objectData?.ObjectId || 'Unknown'}</p>
-        <p>
-          <strong>Created:</strong>{' '}
-          {objectData?.Created
-            ? new Date(objectData.Created).toLocaleString('en-US', {
-              hour12: true, // Ensures AM/PM format
-            })
-            : 'Unknown'}
-        </p>
-        {objectData?.Updated && objectData?.UpdatedBy && (
-          <p>
-            <strong>Updated:</strong>{' '}
-            {objectData.Updated
-              ? `${new Date(objectData.Updated).toLocaleString('en-US', {
-                hour12: true, // Ensures AM/PM format
-              })} by ${objectData.UpdatedBy?.UserName || 'Unknown'}`
-              : 'Unknown'}
-          </p>
-        )}
-        <p><strong>Access:</strong> {accessControlLabel}</p>
+        {/* Card Content */}
+        <div className="flex justify-between items-center">
+          <div>
+            {/* Text Content */}
+            <p>
+              <strong>Type:</strong> {objectData?.Type?.TypeName || 'Unknown'}
+            </p>
+            <p>
+              <strong>Description:</strong> {objectData?.Description || 'No description available'}
+            </p>
+            {objectData?.Sample?.Elements && (
+              <p>
+                <strong>Chemical System:</strong>{' '}
+                {objectData.Sample.Elements.replace(/^-+|-+$/g, '')}
+              </p>
+            )}
+            {objectData?.FileUrl ? (
+              <p>
+                <strong>File:</strong>{' '}
+                <a
+                  href={`${config.BASE_URL}${objectData.FileUrl}`}
+                  className="text-blue-600 underline hover:text-blue-800"
+                  download
+                >
+                  {objectData.FileName || 'Download file'}
+                </a>
+              </p>
+            ) : (
+              <p>
+                <strong>File:</strong> No file available
+              </p>
+            )}
+          </div>
+          {/* Button */}
+          <button
+            onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-md hover:from-green-600 hover:to-green-800 transition-all text-sm"
+          >
+            {showAdditionalInfo ? (
+              <>
+                <i className="fas fa-eye-slash"></i>
+                Hide Additional Info
+              </>
+            ) : (
+              <>
+                <i className="fas fa-eye"></i>
+                Show Additional Info
+              </>
+            )}
+          </button>
+        </div>
 
-        <p className="name-info"><strong>Name:</strong> {objectData?.Name || 'No name available'}</p>
-        <p className="description-info"><strong>Description:</strong> {objectData?.Description || 'No description available'}</p>
-        {/* Conditionally Render Edit and Delete */}
+        {/* Additional Info (No border on top) */}
+        {showAdditionalInfo && (
+          <div className="mt-4">
+            <p>
+              <strong>ObjectId:</strong> {objectData?.ObjectId || 'Unknown'}
+            </p>
+            <p>
+              <strong>Created:</strong>{' '}
+              {objectData?.Created
+                ? new Date(objectData.Created).toLocaleString('en-US', { hour12: true })
+                : 'Unknown'}
+            </p>
+            {objectData?.Updated && objectData?.UpdatedBy && (
+              <p>
+                <strong>Updated:</strong>{' '}
+                {objectData.Updated
+                  ? `${new Date(objectData.Updated).toLocaleString('en-US', { hour12: true })} by ${objectData.UpdatedBy?.UserName || 'Unknown'
+                  }`
+                  : 'Unknown'}
+              </p>
+            )}
+            <p>
+              <strong>Access:</strong> {accessControlLabel}
+            </p>
+          </div>
+        )}
 
-        {objectData?.Sample?.Elements && (
-          <p><strong>Sample Elements:</strong> {objectData.Sample.Elements.replace(/^-+|-+$/g, '')}</p>
-        )}
-        {objectData?.Sample?.ElementNumber && (
-          <p><strong>Element Count:</strong> {objectData.Sample.ElementNumber}</p>
-        )}
 
-        {objectData?.FileUrl ? (
-          <p>
-            <strong>File:</strong> <a href={`${config.BASE_URL}${objectData.FileUrl}`} className="text-blue-600 underline hover:text-blue-800" download>{objectData.FileName || 'Download file'}</a>
-          </p>
-        ) : (
-          <p><strong>File:</strong> No file available</p>
-        )}
         {(objectData?.Type?.TypeName?.toLowerCase() === 'literature reference' || objectData?.Type?.TypeName?.toLowerCase() === 'publication') && objectData?.Reference && (
           <>
             <p><strong>Title:</strong> {objectData.Reference.Title || 'Unknown'}</p>
@@ -248,7 +298,14 @@ function ObjectDetail() {
               objectId={objectData?.ObjectId}
               apiEndpoint={`${config.BASE_URL}api/delete_object`}
               onDeleteComplete={handleDeleteComplete}
+              onDeleteError={handleDeleteError}
             >
+              {/* Show delete error message if any */}
+              {deleteError && (
+                <div className="text-red-500 mt-2">
+                  <strong>Error:</strong> {deleteError}
+                </div>
+              )}
               <div className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 transition-all duration-200 cursor-pointer">
                 <FaTrash className="text-lg" />
                 <span>Delete</span>
@@ -385,7 +442,7 @@ function ObjectDetail() {
                   },
                 })
               }
-              className="bg-orange-500 text-white font-bold py-2 px-4 rounded shadow-md hover:bg-orange-600 transition-transform transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white font-bold py-2 px-4 rounded shadow-md hover:from-orange-500 hover:to-orange-700 transition-transform transform hover:scale-105"
             >
               Edit Associated Objects
             </button>
@@ -525,11 +582,17 @@ function ObjectDetail() {
           <IdeasAndExperimentsMeasurement objectId={objectId} />
         </div>
       )}
+      {objectData?.Type?.TypeName === 'LSV (xlsx, csv, txt)' && objectData?.FileUrl && (
+        <LsvsViewer filePath={`${config.BASE_URL}${objectData.FileUrl}`} />
+      )}
+
+
+
       {/* Button Section */}
       <div className="flex flex-wrap justify-center mt-10 gap-4">
         <button
           onClick={goToWorkflowStatus}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105"
+          className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-800 transition-transform transform hover:scale-105"
         >
           <i className="fas fa-project-diagram"></i> View Workflow Status
         </button>
@@ -537,8 +600,9 @@ function ObjectDetail() {
         {isSeccmType && (
           <button
             onClick={() => setIsLsvsOpen(!isLsvsOpen)}
-            className="bg-green-600 text-white font-bold py-2 px-6 rounded shadow-md hover:bg-green-700 transition-transform transform hover:scale-105"
+            className="bg-gradient-to-r from-green-500 to-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-green-600 hover:to-green-800 transition-transform transform hover:scale-105"
           >
+
             {isLsvsOpen ? 'Hide LSVs Input' : 'Load LSVs'}
           </button>
         )}
@@ -546,7 +610,7 @@ function ObjectDetail() {
 
         <button
           onClick={handleAddProperty}
-          className="flex items-center gap-2 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105"
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-purple-600 hover:to-purple-800 transition-transform transform hover:scale-105"
         >
           <FaPlus className="text-lg" />
           <span>Add Property</span>
@@ -561,17 +625,29 @@ function ObjectDetail() {
         )}
         <button
           onClick={() => navigate(`/add-handover-form/${objectId}`)}
-          className="flex items-center gap-2 bg-teal-500 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105"
-        >
+          className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-teal-600 hover:to-teal-800 transition-transform transform hover:scale-105">
           <i className="fas fa-hands-helping"></i> Add Handover
         </button>
 
         <button
           onClick={() => setShowChooseUploadOption(true)}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105"
+          className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-yellow-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-yellow-600 hover:to-yellow-800 transition-transform transform hover:scale-105"
         >
+
           <i className="fas fa-link"></i> Add Associated Object
         </button>
+        {objectData?.Type?.TypeName === 'Sample' && (
+          <Link
+            to={`/create/synthesis?projectTitle=${encodeURIComponent(objectData?.RubricNameUrl || '')}`}
+            className="no-underline"
+          >
+            <button className="flex items-center gap-2 bg-gradient-to-r from-red-400 to-red-600 text-white px-5 py-2 rounded-lg shadow hover:from-orange-500 hover:to-orange-700 transition-transform transform hover:scale-105">
+              <i className="fas fa-flask text-xl"></i>
+              <span>Add Synthesis</span>
+            </button>
+          </Link>
+        )}
+
       </div>
 
       {/* LSVs Input Form */}
@@ -620,8 +696,6 @@ function ObjectDetail() {
           )}
         </div>
       )}
-
-
 
       {/* Choose Upload Option Modal */}
       {

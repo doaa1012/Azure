@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Line } from 'react-chartjs-2';  // For plotting
-import FileSaver from 'file-saver';  // For downloading files
 import config from '../../../config_path';
-function LsvsInputForm({ objectId }) {
+
+function LsvsInputForm({ objectId, onLoadLsvs }) {
   const [stPot, setStPot] = useState(0.21);
   const [offsetPot, setOffsetPot] = useState(0);
   const [ph, setPh] = useState(1);
@@ -10,9 +9,6 @@ function LsvsInputForm({ objectId }) {
   const [sweep, setSweep] = useState(7);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [lsvsData, setLsvsData] = useState(null);
-  const [selectedArea, setSelectedArea] = useState('');
-  const [plotAllAreas, setPlotAllAreas] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,10 +16,25 @@ function LsvsInputForm({ objectId }) {
     setError(null);
 
     try {
+      const token = localStorage.getItem('token'); // Retrieve the JWT token
+      if (!token) {
+        throw new Error('User is not authenticated. Please log in.');
+      }
+
+      // Decode the token to extract user details
+      const payload = JSON.parse(atob(token.split('.')[1])); // Decode JWT payload
+      const userId = payload?.user_id; // Adjust key based on your JWT structure
+      const username = payload?.username; // Adjust key if available in the token
+
+      if (!userId) {
+        throw new Error('User ID is missing in the token. Please log in again.');
+      }
+
       const response = await fetch(`${config.BASE_URL}api/load_lsvs/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // Add the token to the header
         },
         body: JSON.stringify({
           object_id: objectId,
@@ -32,6 +43,8 @@ function LsvsInputForm({ objectId }) {
           ph: ph,
           d_cap: dCap,
           sweep: sweep,
+          user_id: userId, // Send user ID
+          username: username, // Optionally send username
         }),
       });
 
@@ -41,8 +54,7 @@ function LsvsInputForm({ objectId }) {
 
       const data = await response.json();
       if (data.success) {
-        setLsvsData(data.data);
-        setSelectedArea(Object.keys(data.data)[0]);
+        onLoadLsvs(data.data); // Pass loaded data to the parent component
       } else {
         setError(data.error);
       }
@@ -51,141 +63,6 @@ function LsvsInputForm({ objectId }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([JSON.stringify(lsvsData)], { type: 'application/json' });
-    FileSaver.saveAs(blob, 'lsvs_data.json');
-  };
-
-  const handleAreaChange = (e) => {
-    setSelectedArea(e.target.value);
-    setPlotAllAreas(false);
-  };
-
-  const handlePlotAllAreas = () => {
-    setPlotAllAreas(true);
-  };
-
-  const handlePlotSelectedArea = () => {
-    setPlotAllAreas(false);
-  };
-
-  const renderTable = () => {
-    if (!lsvsData || !selectedArea) return null;
-  
-    const areaData = lsvsData[selectedArea];
-    const potential = areaData["Potential"];
-    const currentDensity = areaData["Current density [A/cm^2]"];
-  
-    if (!potential || !currentDensity || potential.length !== currentDensity.length) {
-      return <p className="text-red-500">Invalid data for measurement area {selectedArea}</p>;
-    }
-  
-    return (
-      <div className="mt-6 p-4 border border-blue-300 rounded-lg shadow-md">
-        <h3 className="text-lg font-bold mb-4">Measurement Area: {selectedArea}</h3>
-        <table className="table-auto w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-blue-100">
-              <th className="border px-4 py-2 font-semibold text-blue-700">Potential (V)</th>
-              <th className="border px-4 py-2 font-semibold text-blue-700">Current Density (A/cm^2)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {potential.map((potValue, index) => (
-              <tr key={index} className={index % 2 === 0 ? 'bg-blue-100' : 'bg-blue hover:bg-blue-200'}>
-                <td className="border px-4 py-2">{potValue.toFixed(2)}</td>
-                <td className="border px-4 py-2">{currentDensity[index].toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-  
-
-  const renderPlot = () => {
-    if (!lsvsData) return null;
-  
-    const datasets = [];
-  
-    // Plot all areas if selected
-    if (plotAllAreas) {
-      Object.keys(lsvsData).forEach((area) => {
-        const areaData = lsvsData[area];
-        const currentDensity = areaData["Current density [A/cm^2]"];
-  
-        datasets.push({
-          label: `Area ${area}`,
-          data: currentDensity,
-          borderColor: getRandomColor(),
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          fill: false,
-          pointRadius: 0, // Remove the dots for all areas
-          pointHoverRadius: 0, // Also remove the dots on hover
-        });
-      });
-    } else if (selectedArea) {
-      const areaData = lsvsData[selectedArea];
-      const currentDensity = areaData["Current density [A/cm^2]"];
-  
-      datasets.push({
-        label: `Current Density vs Potential - Area ${selectedArea}`,
-        data: currentDensity,
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        fill: true,
-        pointRadius: 3,  // Keep dots for the selected area
-        pointHoverRadius: 5,  // Larger dots on hover for the selected area
-      });
-    }
-  
-    const data = {
-      labels: lsvsData[selectedArea]?.["Potential"].map(pot => pot.toFixed(2)),
-      datasets: datasets,
-    };
-  
-    const options = {
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Potential (V)',
-          },
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Current Density (A/cm^2)',
-          },
-        },
-      },
-      plugins: {
-        legend: {
-          display: !plotAllAreas,  // Hide legend if plotting all areas
-        },
-      },
-      elements: {
-        line: {
-          tension: 0.3,  // Smoother line curves
-        },
-      },
-    };
-  
-    return <Line data={data} options={options} />;
-  };
-  
-  
-
-  const getRandomColor = () => {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
   };
 
   return (
@@ -253,47 +130,6 @@ function LsvsInputForm({ objectId }) {
       </form>
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
-
-      {lsvsData && (
-        <div className="mt-6">
-          <button onClick={handleDownload} className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200">
-            Download as JSON
-          </button>
-
-          <div className="mt-4">
-            <label className="block text-gray-700 font-bold mb-2">Select Measurement Area:</label>
-            <select
-              value={selectedArea}
-              onChange={handleAreaChange}
-              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              {Object.keys(lsvsData).map((area, index) => (
-                <option key={index} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-4 flex">
-            <button
-              onClick={handlePlotSelectedArea}
-              className="bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-200"
-            >
-              Plot Selected Area
-            </button>
-            <button
-              onClick={handlePlotAllAreas}
-              className="ml-4 bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-200"
-            >
-              Plot All Areas
-            </button>
-          </div>
-
-          {renderTable()}
-          {renderPlot()}
-        </div>
-      )}
     </div>
   );
 }

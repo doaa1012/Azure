@@ -337,7 +337,7 @@ const CreateObject = () => {
           <div className="flex justify-between">
             <button
               type="button"
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               onClick={() => navigate(-1)}
             >
               Close and Back to the Site
