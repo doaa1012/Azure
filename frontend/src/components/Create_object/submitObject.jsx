@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'; // Ensure Link is imported
+
 export const handleSubmit = async ({
   formData,
   token,
@@ -5,34 +7,42 @@ export const handleSubmit = async ({
   navigate,
   setErrorMessage,
 }) => {
-  const payload = new FormData();
-
-  payload.append('tenantId', 4);
-  payload.append('typeId', formData.type);
-  payload.append('rubricId', formData.rubricId);
-  payload.append('sortCode', formData.sortCode || 0);
-  payload.append(
-    'accessControl',
-    formData.accessControl === 'protected'
-      ? 1
-      : formData.accessControl === 'public'
-      ? 2
-      : 3
-  );
-  payload.append('name', formData.name);
-  payload.append('description', formData.description);
-
-  if (formData.filePath) {
-    payload.append('filePath', formData.filePath);
-  }
-
-  // Append the objectId to the payload if it exists
-  if (formData.objectId) {
-    payload.append('objectId', formData.objectId);
-  }
-
   try {
-    // Initial request to create the object
+    const payload = new FormData();
+
+    payload.append('tenantId', 4);
+    payload.append('typeId', formData.type);
+    payload.append('rubricId', formData.rubricId);
+    payload.append('sortCode', formData.sortCode || 0);
+    payload.append(
+      'accessControl',
+      formData.accessControl === 'protected'
+        ? 1
+        : formData.accessControl === 'public'
+        ? 2
+        : 3
+    );
+
+    if (!formData.filePath) {
+      setErrorMessage("Error: No file provided.");
+      return;
+    }
+
+    // Extract the name from the file name (without extension)
+    const fileName = formData.filePath.name;
+    const nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+
+    payload.append('name', nameWithoutExtension);
+    payload.append('description', formData.description);
+    payload.append('filePath', formData.filePath);
+
+    if (formData.objectId) {
+      payload.append('objectId', formData.objectId);
+    }
+
+    console.log("Submitting Payload:", Array.from(payload.entries()));
+
+    // API request to create the object
     const response = await fetch('http://127.0.0.1:8000/api/create_object/', {
       method: 'POST',
       headers: {
@@ -42,59 +52,33 @@ export const handleSubmit = async ({
     });
 
     const data = await response.json();
-    console.log('POST response data:', data); // Log response to verify structure
+    console.log('API Response:', data);
 
-    if (response.status === 409) {
-      if (data.error === 'File already exists with the same content.') {
+    // Handle Conflict (Duplicate File Exists)
+    if (response.status === 409 && data.error === 'File already exists with the same content.') {
+      if (data.existing_object && data.existing_object.objectId) {
         setErrorMessage(
           <>
-            File copy already exists, see{' '}
+            File already exists. View existing object:{' '}
             <Link
               to={`/object/${data.existing_object.objectId}`}
               className="text-blue-600 underline"
             >
-              {data.existing_object.objectName}
+              {data.existing_object.objectName || `Object ID: ${data.existing_object.objectId}`}
             </Link>
           </>
         );
       } else {
-        setErrorMessage('An unexpected error occurred.');
+        setErrorMessage('A file with the same content already exists, but object details are missing.');
       }
       return;
     }
 
     if (!response.ok) {
-      throw new Error(`Failed to create object: ${response.statusText}`);
+      throw new Error(data.error || 'An unexpected error occurred.');
     }
 
-    const { objectId } = data; // Corrected field name based on the response
-
-    if (!objectId) {
-      setErrorMessage('Failed to retrieve object ID from the response.');
-      return;
-    }
-
-    // Step 2: Update objectnameurl with filename-objectId
-    const updatePayload = new FormData();
-    const objectNameUrl = `${formData.name}-${objectId}`;
-    updatePayload.append('objectnameurl', objectNameUrl);
-
-    const updateResponse = await fetch(
-      `http://127.0.0.1:8000/api/update_object_url/${objectId}/`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: updatePayload,
-      }
-    );
-
-    if (!updateResponse.ok) {
-      throw new Error(`Failed to update object URL: ${updateResponse.statusText}`);
-    }
-
-    // Redirect to the object list after successful creation and URL update
+    // Redirect after successful creation
     navigate(`/${groupName ? encodeURIComponent(groupName) : ''}`);
 
   } catch (error) {

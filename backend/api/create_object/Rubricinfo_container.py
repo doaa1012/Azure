@@ -93,7 +93,11 @@ def create_rubric(request):
         # Generate rubricpath and rubricnameurl
         rubricpath = f"{parent_rubric_path}}}{name}" if parent_rubric_path else name
         print(f"Generated Rubric Path: {rubricpath}")
-        rubricnameurl = f"{slugify(rubric_name)}_{slugify(name)}".lower()
+        if parent_rubric_path:
+            rubricnameurl = f"{slugify(parent_rubric.rubricname)}_{slugify(name)}".lower()
+        else:
+            rubricnameurl = slugify(name).lower()
+
         print(f"Generated Rubric Name URL: {rubricnameurl}")
         level = rubricpath.count('}')
         print(f"Calculated Level: {level}")

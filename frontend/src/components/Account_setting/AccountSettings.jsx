@@ -5,6 +5,7 @@ import Password from './Password';
 import ExternalLogins from './ExternalLogins';
 import TwoFactorAuth from './TwoFactorAuth';
 import PersonalData from './PersonalData';
+import UserActivities from './UserActivities';
 
 const AccountSettings = () => {
   const [selectedSection, setSelectedSection] = useState('Profile');
@@ -23,6 +24,9 @@ const AccountSettings = () => {
         return <TwoFactorAuth />;
       case 'Personal Data':
         return <PersonalData />;
+      case 'User Activities':
+        return <UserActivities />;
+
       default:
         return <Profile />;
     }
@@ -41,61 +45,65 @@ const AccountSettings = () => {
           <div className="w-1/4 bg-blue-100 p-6">
             <ul className="space-y-4">
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'Profile'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'Profile'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
                 onClick={() => setSelectedSection('Profile')}
               >
                 Profile
               </li>
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'Email'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'Email'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
                 onClick={() => setSelectedSection('Email')}
               >
                 Email
               </li>
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'Password'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'Password'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
                 onClick={() => setSelectedSection('Password')}
               >
                 Password
               </li>
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'External Logins'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'External Logins'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
                 onClick={() => setSelectedSection('External Logins')}
               >
                 External Logins
               </li>
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'Two-Factor Authentication'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'User Activities'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
+                onClick={() => setSelectedSection('User Activities')}
+              >
+                User Activities
+              </li>
+
+              <li
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'Two-Factor Authentication'
+                    ? 'bg-blue-600 text-white font-bold'
+                    : 'text-blue-700 hover:bg-blue-200'
+                  }`}
                 onClick={() => setSelectedSection('Two-Factor Authentication')}
               >
                 Two-Factor Authentication
               </li>
               <li
-                className={`cursor-pointer p-2 rounded-md ${
-                  selectedSection === 'Personal Data'
+                className={`cursor-pointer p-2 rounded-md ${selectedSection === 'Personal Data'
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-blue-700 hover:bg-blue-200'
-                }`}
+                  }`}
                 onClick={() => setSelectedSection('Personal Data')}
               >
                 Personal Data

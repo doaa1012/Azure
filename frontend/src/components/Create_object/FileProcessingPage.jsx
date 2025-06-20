@@ -85,7 +85,6 @@ function FileProcessingPage() {
       .catch(error => console.error("Error fetching rubrics:", error));
   }, [files, objectnameurl]);
   
-  
 
   const getClosestType = (fileName, types) => {
     let closestType = types[0]?.typename || '';
@@ -159,9 +158,9 @@ function FileProcessingPage() {
   };
 
   return (
-    <div className="flex justify-center items-start mt-8">
+    <div className="flex justify-center items-center min-h-screen bg-blue-50">
       <div className="shadow-lg rounded-lg p-8 w-full max-w-4xl bg-white">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Objects to Create</h2>
+        <h2 className="text-2xl font-semibold text-blue-800 mb-6">Objects to Create</h2>
 
         {errorMessage && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
@@ -169,17 +168,17 @@ function FileProcessingPage() {
           </div>
         )}
 
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Files to Process</h3>
+        <h3 className="text-lg font-semibold text-blue-700 mb-4">Files to Process</h3>
         
         {fileData.map((fileObj, index) => (
-          <div key={index} className="flex items-center bg-gray-50 p-4 rounded-lg mb-4 shadow-md border border-gray-200">
+          <div key={index} className="flex items-center bg-blue-50 p-4 rounded-lg mb-4 shadow-md border border-blue-200">
             <div className="flex-1">
-              <p className="font-medium text-gray-800 mb-2">{fileObj.file.name}</p>
+              <p className="font-medium text-blue-800 mb-2">{fileObj.file.name}</p>
               <div className="flex items-center mt-2 space-x-4">
                 <div>
-                  <label className="text-sm text-gray-500">Type:</label>
+                  <label className="text-sm text-blue-500">Type:</label>
                   <select
-                    className="border border-gray-300 rounded-md p-2 mt-1"
+                    className="border border-blue-300 rounded-md p-2 mt-1"
                     value={fileObj.type}
                     onChange={(e) => handleTypeChange(index, e.target.value)}
                   >
@@ -189,10 +188,10 @@ function FileProcessingPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Sort Code:</label>
+                  <label className="text-sm text-blue-500">Sort Code:</label>
                   <input
                     type="number"
-                    className="border border-gray-300 rounded-md p-2 mt-1 w-24"
+                    className="border border-blue-300 rounded-md p-2 mt-1 w-24"
                     value={fileObj.sortCode}
                     onChange={(e) => handleSortCodeChange(index, e.target.value)}
                   />
@@ -208,12 +207,12 @@ function FileProcessingPage() {
           </div>
         ))}
 
-        <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Common Properties</h3>
+        <h3 className="text-lg font-semibold text-blue-700 mt-6 mb-2">Common Properties</h3>
         <div className="flex items-center space-x-6 mb-4">
           <div>
-            <label className="text-sm text-gray-500">Access Control (accessibility):</label>
+            <label className="text-sm text-blue-500">Access Control (accessibility):</label>
             <select
-              className="border border-gray-300 rounded-md p-2 mt-1 w-full"
+              className="border border-blue-300 rounded-md p-2 mt-1 w-full"
               value={accessControl}
               onChange={(e) => setAccessControl(e.target.value)}
             >
@@ -224,10 +223,10 @@ function FileProcessingPage() {
             </select>
           </div>
           <div>
-            <label className="text-sm text-gray-500">Rubric:</label>
+            <label className="text-sm text-blue-500">Rubric:</label>
             <input
               type="text"
-              className="border border-gray-300 rounded-md p-2 mt-1 w-full bg-gray-100 text-gray-700"
+              className="border border-blue-300 rounded-md p-2 mt-1 w-full bg-blue-100 text-blue-700"
               value={rubricName || ''} 
               readOnly
             />

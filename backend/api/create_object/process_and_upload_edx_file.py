@@ -23,11 +23,37 @@ ACCESS_CONTROL_MAP = {
 }
 
 @csrf_exempt
+def get_objectid_from_objectnameurl(request):
+    """
+    Retrieve the objectId based on the given objectnameurl.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Only GET method is allowed'}, status=405)
+
+    objectnameurl = request.GET.get('objectnameurl', None)
+
+    if not objectnameurl:
+        return JsonResponse({'error': 'Missing objectnameurl parameter'}, status=400)
+
+    try:
+        object_info = Objectinfo.objects.get(objectnameurl=objectnameurl)
+        return JsonResponse({'objectId': object_info.objectid}, status=200)
+    
+    except Objectinfo.DoesNotExist:
+        return JsonResponse({'error': f"Object with name URL '{objectnameurl}' not found"}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': f"Internal Server Error: {str(e)}"}, status=500)
+
+@csrf_exempt
 def create_main_and_child_objects(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     try:
+            # Log received request data
+        print("Received Form Data:", request.POST)
+        print("Received Files:", request.FILES)
         # Token validation
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
@@ -50,6 +76,11 @@ def create_main_and_child_objects(request):
         access_control_value = request.POST.get('accessControl')
         access_control = ACCESS_CONTROL_MAP.get(access_control_value.lower(), 1)
         sampleid = request.POST.get('objectId', None)
+        if not sampleid:
+            return JsonResponse(
+                {'error': 'Each EDX CSV upload must be linked to a Sample. Please return to the Sample and use "Create EDX" from there.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Fetch the Sample instance
         try:
@@ -66,22 +97,48 @@ def create_main_and_child_objects(request):
         rubric = Rubricinfo.objects.get(rubricid=rubric_id) if rubric_id else None
         rubric_path = rubric.rubricpath
         rubric_nameurl = rubric.rubricnameurl
-        # Handle file upload
+      # Handle file upload
         file = request.FILES.get('filePath')
+
         if not file:
             return JsonResponse({'error': 'File not provided'}, status=status.HTTP_400_BAD_REQUEST)
+        # Generate Object ID
+        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
+        main_object_id = (max_id or 0) + 1  # Ensure this is assigned
+        # Define correct file storage path
+        sample_folder = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}", f"type{type_info.typeid}", f"object{main_object_id}", "file")
+        os.makedirs(sample_folder, exist_ok=True)  # Ensure directory exists
 
-        file_path = os.path.join(BASE_FILE_PATH, file.name)
+        file_path = os.path.join(sample_folder, file.name)
+
+        # ✅ First, compute file hash after reading the file
         file_hash = hashlib.md5(file.read()).hexdigest()
-        file.seek(0)
+        file.seek(0)  # Reset file pointer after reading
 
+        # ✅ Now it's safe to use `file_hash`
+        existing_file = Objectinfo.objects.filter(
+            tenantid=tenant,
+            objectfilehash=file_hash
+        ).first()
+
+        if existing_file:
+            return JsonResponse({
+                'error': 'A file with the same content already exists for this tenant.',
+                'existing_object': {
+                    'objectId': existing_file.objectid,
+                    'objectName': existing_file.objectname,
+                    'createdDate': existing_file.field_created.strftime('%Y-%m-%d %H:%M:%S'),
+                    'description': existing_file.objectdescription,
+                    'url': existing_file.objectnameurl  # Ensure the frontend gets this URL
+                }
+            }, status=status.HTTP_409_CONFLICT)  # HTTP 409 Conflict
+
+        # ✅ Save file only if it doesn't exist
         with open(file_path, 'wb') as destination:
             for chunk in file.chunks():
                 destination.write(chunk)
 
         # Create main Objectinfo entry
-        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
-        main_object_id = (max_id or 0) + 1
         main_object_url = f"{main_object_name}-{main_object_id}".lower()
         main_object = Objectinfo(
             objectid=main_object_id,

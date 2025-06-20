@@ -54,11 +54,7 @@ const CreateObject = () => {
     setChemicalSystem(selectedElements.join('-'));
     setIsModalOpen(false);
   };
-
-
   console.log('rubricnameurl:', rubricnameurl);
-
-
 
   const [formData, setFormData] = useState({
     type: typeName,
@@ -91,7 +87,10 @@ const CreateObject = () => {
       .then((data) => {
         setRubrics(data);
         if (rubricnameurl) {
-          const matchingRubric = data.find((rubric) => rubric.rubricnameurl === rubricnameurl);
+          const matchingRubric = data.find(
+            (rubric) => rubric.rubricnameurl?.trim().toLowerCase() === rubricnameurl?.trim().toLowerCase()
+          );
+          
           if (matchingRubric) {
             setFormData((prevData) => ({
               ...prevData,
@@ -112,6 +111,11 @@ const CreateObject = () => {
   };
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      setErrorMessage('Name is required.');
+      return;
+    }
+    
 
     const token = localStorage.getItem('token');
     const payload = new FormData();
@@ -172,9 +176,27 @@ const CreateObject = () => {
         if (!response.ok) {
           const errorData = await response.json();
           console.error("API error:", errorData);
-          setErrorMessage(errorData.error || "An unexpected error occurred.");
+        
+          if (errorData.existing_object) {
+            const existing = errorData.existing_object;
+            setErrorMessage(
+              <>
+                <span className="font-bold">File already exists with the same content.</span><br />
+                Existing Object:&nbsp;
+                <Link
+                  to={`/object/${existing.objectId}`}
+                  className="text-blue-600 underline hover:text-blue-800"
+                >
+                  {existing.objectName} (ID: {existing.objectId})
+                </Link>
+              </>
+            );
+          } else {
+            setErrorMessage(errorData.error || "An unexpected error occurred.");
+          }
           return;
         }
+        
         const data = await response.json();
         console.log("Response from server:", data);
         if (data.message === 'Object created successfully!') {
@@ -194,10 +216,11 @@ const CreateObject = () => {
           <h1 className="text-3xl font-extrabold text-blue-600">Create New Object ({typeName})</h1>
         </div>
         {errorMessage && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {errorMessage}
-          </div>
-        )}
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+    {typeof errorMessage === 'string' ? errorMessage : <>{errorMessage}</>}
+  </div>
+)}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           <div>
             <label className="block text-lg font-semibold text-blue-800">Type</label>
@@ -245,29 +268,37 @@ const CreateObject = () => {
           </div>
 
           <div>
-            <label className="block text-lg font-semibold text-blue-800">Name</label>
+          <label className="block text-lg font-semibold text-blue-800">
+              Name <span className="text-red-600">*</span>
+            </label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+              className={`w-full p-3 bg-blue-50 border ${errorMessage && typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('name')
+                  ? 'border-red-500'
+                  : 'border-blue-300'
+                } rounded`}
               placeholder="Enter name"
+              required
             />
+
           </div>
 
           <div>
           <label className="block text-lg font-semibold text-blue-800">URL (unique)</label>
           <input
-            type="text"
-            name="url"
-            value={formData.url}
-            onChange={handleInputChange}
-            className={`w-full p-3 bg-blue-50 border ${
-              errorMessage.includes('URL') ? 'border-red-500' : 'border-blue-300'
-            } rounded`}
-            placeholder="Enter unique URL"
-          />
+  type="text"
+  name="url"
+  value={formData.url}
+  onChange={handleInputChange}
+  className={`w-full p-3 bg-blue-50 border ${
+    typeof errorMessage === 'string' && errorMessage.includes('URL') ? 'border-red-500' : 'border-blue-300'
+  } rounded`}
+  placeholder="Enter unique URL"
+/>
+
         </div>
 
 

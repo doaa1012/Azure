@@ -16,7 +16,7 @@ const LiteratureReferenceForm = () => {
     accessControl: 'protected',
     name: '',
     url: '',
-    filePath: '',
+    filePath: null, // 🔹 Ensure file is stored properly
     description: '',
     authors: '',
     title: '',
@@ -77,6 +77,13 @@ const LiteratureReferenceForm = () => {
     }));
   };
 
+  const handleFileChange = (e) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      filePath: e.target.files[0], // 🔹 Store file in state
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -86,18 +93,23 @@ const LiteratureReferenceForm = () => {
     payload.append('tenantId', 4);
     payload.append('typeId', typeName);
     payload.append('name', formData.name);
+
     Object.keys(formData).forEach((key) => {
-      if (formData[key]) {
+      if (formData[key] && key !== 'filePath') {
         payload.append(key, formData[key]);
       }
     });
+
+    if (formData.filePath) {
+      payload.append('filePath', formData.filePath); // 🔹 Append file to FormData
+    }
 
     fetch(`${config.BASE_URL}api/create_reference/`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      body: payload,
+      body: payload, // 🔹 FormData allows file upload
     })
       .then(async (response) => {
         if (!response.ok) {
@@ -160,7 +172,15 @@ const LiteratureReferenceForm = () => {
               ))}
             </select>
           </div>
-
+          <div>
+            <label className="block text-lg font-semibold text-blue-800">Upload File</label>
+            <input
+              type="file"
+              name="filePath"
+              onChange={handleFileChange}
+              className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+            />
+          </div>
           <div>
             <label className="block text-lg font-semibold text-blue-800">Name</label>
             <input

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-
+import config from '../../config_path';
 const Password = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -30,7 +30,7 @@ const Password = () => {
       }
 
       const response = await axios.put(
-        'http://127.0.0.1:8000/api/update-password/',
+        `${config.BASE_URL}api/update-password/`,
         {
           user_id: userId, // Ensure this field is sent
           currentPassword: currentPassword, // Ensure this field is sent
@@ -43,6 +43,7 @@ const Password = () => {
           },
         }
       );
+      
 
       if (response.status === 200) {
         setSuccessMessage('Password updated successfully!');

@@ -49,7 +49,7 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     // Redirect user to Django Google login endpoint
-    window.location.href = `${config.BASE_URL}auth/login/google-oauth2/`;
+   window.location.href = `${config.BASE_URL}auth/google/`; 
   };
 
   return (

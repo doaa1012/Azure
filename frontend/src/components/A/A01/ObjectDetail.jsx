@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import CompositionDetails from './CompositionDetails';
 import LsvsInputForm from './LsvsInputForm';
-import AddPropertyForm from '../../Create_object/AddPropertyForm';
-import AddAssociatedObjectForm from '../../Create_object/AddAssociatedObjectForm';
-import AddHandoverForm from '../../Create_object/AddHandoverForm';
+//import AddPropertyForm from '../../Create_object/AddPropertyForm';
+//import AddAssociatedObjectForm from '../../Create_object/AddAssociatedObjectForm';
+//import AddHandoverForm from '../../Create_object/AddHandoverForm';
+import CSVTable from '../../CSVTable';
 import HandoverDetails from './HandoverDetails';
 import ChooseUploadOptionModal from '../../Create_object/ChooseUploadOptionModal';
 import DeleteHandler from '../../edit_delete/DeleteHandler';
@@ -16,8 +17,8 @@ import IdeasAndExperimentsMeasurement from './IdeasAndExperimentsMeasurement';
 import LsvsViewer from './LsvsViewer';
 import SplitSample from "./SplitSample";
 import config from '../../../config_path';
-import { FaEdit } from 'react-icons/fa';
-import { FaTrash, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus  } from 'react-icons/fa';
+
 import jwtDecode from 'jwt-decode';
 function ObjectDetail() {
   const { objectId } = useParams();
@@ -36,10 +37,10 @@ function ObjectDetail() {
   const [currentUser, setCurrentUser] = useState(null);
   const [lsvsData, setLsvsData] = useState({});
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
-
-
-
+  const isCsvFile = objectData?.FileUrl && objectData?.FileName?.toLowerCase().endsWith(".csv");
   const isIdeasOrExperiment = objectData?.Type?.TypeName?.toLowerCase() === 'ideas or experiment plans';
+  const [showCsvTable, setShowCsvTable] = useState(false);
+  const [lsvSuccessMessage, setLsvSuccessMessage] = useState(null);
 
   const navigate = useNavigate();
   useEffect(() => {
@@ -52,26 +53,118 @@ function ObjectDetail() {
     2: "Protected NDA",
     3: "Private",
   };
-
   const accessControlLabel = accessControlMapping[objectData?.Access] || "Unknown";
-
   const seccmTypes = [
     "SECCM (csv)",
     "SECCM Long-range Processed (csv)",
     "SECCM Long-range Raw (zip)",
     "SECCM/EBSD correlation (xlsx)"
   ];
+
+  const handleRecycle = async (objectId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.BASE_URL}api/recycle-object/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ objectId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || 'Failed to recycle object');
+
+      alert('Object moved to Recycle Bin.');
+      navigate('/'); // Redirect after recycle
+    } catch (error) {
+      console.error('Recycle error:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const getColorByType = (typeName) => {
+    switch (typeName.toLowerCase()) {
+      case 'apt':
+        return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-500', badge: 'bg-green-600' };
+      case 'hypothesis':
+        return { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-500', badge: 'bg-purple-600' };
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-400', badge: 'bg-gray-600' };
+    }
+  };
+
   const fetchObjectData = async () => {
     setLoading(true);
     try {
       const response = await fetch(`${config.BASE_URL}api/object/${objectId}/`);
       const data = await response.json();
       setObjectData(data);
+
+      //  If objectnameurl exists, update the browser URL without changing objectId
+      if (window.location.pathname !== `/object/${objectId}`) {
+        window.history.replaceState(null, "", `/object/${objectId}`);
+      }
+
     } catch (error) {
       setError(error);
     } finally {
       setLoading(false);
     }
+  };
+  const [rubricLinks, setRubricLinks] = useState(null);
+  const fetchRubricNameUrl = async (rubricName) => {
+    try {
+      const response = await fetch(`${config.BASE_URL}api/rubricnameurl/${encodeURIComponent(rubricName)}/`);
+      const data = await response.json();
+      return data.rubricnameurl || rubricName; // Fallback to rubricName if rubricnameurl is not found
+    } catch (error) {
+      console.error("Error fetching rubricnameurl:", error);
+      return rubricName; // Fallback in case of error
+    }
+  };
+
+  useEffect(() => {
+    console.log("RubricPath:", objectData?.RubricPath);
+    if (objectData?.RubricPath) {
+      generateRubricLinks(objectData.RubricPath);
+    }
+  }, [objectData?.RubricPath]);
+
+  const generateRubricLinks = async (rubricPath) => {
+    if (!rubricPath) return;
+
+    const pathParts = rubricPath.split("}").filter(Boolean);
+    let links = [];
+
+    for (let index = 0; index < pathParts.length; index++) {
+      let path = "";
+      let displayName = pathParts[index]; // Keep rubricname visible
+      let rubricnameurl = displayName; // Default to rubricname, update if found
+
+      if (index === 0) {
+        path = `/${displayName.toLowerCase().replace(/\s+/g, "-")}`;
+      } else if (index === 1) {
+        path = `/${encodeURIComponent(displayName)}`;
+      } else if (index === 2 || index === 3) {
+        // Fetch the correct rubricnameurl for the group or object
+        rubricnameurl = await fetchRubricNameUrl(displayName);
+        path = index === 2 ? `/group/${encodeURIComponent(rubricnameurl)}` : `/group/${encodeURIComponent(rubricnameurl)}`;
+      }
+
+      links.push(
+        <span key={index}>
+          {index > 0 && " / "}
+          <Link to={path} className="text-blue-600 underline hover:text-blue-800">
+            {displayName} {/* Show rubricname */}
+          </Link>
+        </span>
+      );
+    }
+
+    setRubricLinks(links);
   };
 
   useEffect(() => {
@@ -96,18 +189,21 @@ function ObjectDetail() {
 
   }, [objectId]);
   const handleDeleteComplete = (deletedId) => {
-    console.log(`Object with ID ${deletedId} deleted successfully.`);
+    //console.log(`Object with ID ${deletedId} deleted successfully.`);
     navigate('/'); // Redirect after deletion
   };
   const handleDeleteError = (errorMessage) => {
     setDeleteError(errorMessage); // Update delete error state
   };
-  const handleLsvsSubmit = (params) => {
-    // Add your LSV submission logic here
+  const handleLsvsSubmit = (data) => {
+    setLsvsData(data);;
+    setLsvSuccessMessage('LSV Data processed and saved successfully!');
+    fetchObjectData();
+    window.location.reload();
   };
 
-  console.log('Properties:', objectData?.Properties);
-  console.log("Fetched objectData:", objectData);
+  //console.log('Properties:', objectData?.Properties);
+  //console.log("Fetched objectData:", objectData);
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading object details: {error.message}</p>;
   if (!objectData) return <p>No data available.</p>;
@@ -136,7 +232,7 @@ function ObjectDetail() {
   const goToUploadFiles = () => {
     navigate(`/create/upload_files`);
   };
-  console.log('Current User:', objectData);
+  //console.log('Current User:', objectData);
 
   const currentUserId = currentUser?.user_id; // Safely access user_id from currentUser
   const isOwner = objectData?.CreatedBy?.UserId === currentUserId; // Check ownership
@@ -163,7 +259,7 @@ function ObjectDetail() {
         const data = await response.json();
         alert(`Processing step added successfully! New sample name: ${data.sampleName}`);
         setProcessingDescription(''); // Clear the input field
-        console.log('New Sample Created:', data);
+        //console.log('New Sample Created:', data);
       } else {
         const errorData = await response.json();
         alert('Error adding processing step: ' + errorData.message);
@@ -177,7 +273,7 @@ function ObjectDetail() {
   return (
     <div className="object-detail-container bg-blue-50 p-10 min-h-screen">
       <h1 className="object-detail-title text-center text-4xl font-bold text-gray-800 mb-10">
-        {(objectData?.Name || 'Unknown Object').toUpperCase()}
+        {(objectData?.ObjectName || 'Unknown Object').toUpperCase()}
       </h1>
 
       {/* MAIN CARD */}
@@ -198,22 +294,34 @@ function ObjectDetail() {
                 {objectData.Sample.Elements.replace(/^-+|-+$/g, '')}
               </p>
             )}
+            {/* File Attachment Section */}
             {objectData?.FileUrl ? (
               <p>
-                <strong>File:</strong>{' '}
+                <strong>File:</strong>{" "}
                 <a
                   href={`${config.BASE_URL}${objectData.FileUrl}`}
                   className="text-blue-600 underline hover:text-blue-800"
                   download
                 >
-                  {objectData.FileName || 'Download file'}
+                  {objectData.FileName || "Download file"}
                 </a>
+
+                {/* Open CSV Viewer in a new page */}
+                {isCsvFile && (
+                  <button
+                    onClick={() => navigate(`/csv-viewer/${objectId}`)}
+                    className="ml-4 text-white bg-green-500 px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-all"
+                  >
+                    View CSV Data
+                  </button>
+                )}
               </p>
             ) : (
-              <p>
-                <strong>File:</strong> No file available
-              </p>
+              <p><strong>File:</strong> No file available</p>
             )}
+
+            {/* Render CSV Table Viewer when 'Show Table' is clicked */}
+            {showCsvTable && <CSVTable objectId={objectId} onClose={() => setShowCsvTable(false)} />}
           </div>
           {/* Button */}
           <button
@@ -237,6 +345,12 @@ function ObjectDetail() {
         {/* Additional Info (No border on top) */}
         {showAdditionalInfo && (
           <div className="mt-4">
+            {rubricLinks && (
+              <p>
+                <strong>Rubric Path:</strong> {rubricLinks}
+              </p>
+            )}
+
             <p>
               <strong>ObjectId:</strong> {objectData?.ObjectId || 'Unknown'}
             </p>
@@ -260,7 +374,6 @@ function ObjectDetail() {
             </p>
           </div>
         )}
-
 
         {(objectData?.Type?.TypeName?.toLowerCase() === 'literature reference' || objectData?.Type?.TypeName?.toLowerCase() === 'publication') && objectData?.Reference && (
           <>
@@ -293,24 +406,37 @@ function ObjectDetail() {
               <span>Edit</span>
             </Link>
 
-            {/* Delete Button */}
-            <DeleteHandler
-              objectId={objectData?.ObjectId}
-              apiEndpoint={`${config.BASE_URL}api/delete_object`}
-              onDeleteComplete={handleDeleteComplete}
-              onDeleteError={handleDeleteError}
-            >
-              {/* Show delete error message if any */}
-              {deleteError && (
-                <div className="text-red-500 mt-2">
-                  <strong>Error:</strong> {deleteError}
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 transition-all duration-200 cursor-pointer">
-                <FaTrash className="text-lg" />
-                <span>Delete</span>
-              </div>
-            </DeleteHandler>
+            {/*
+<DeleteHandler
+  objectId={objectData?.ObjectId}
+  apiEndpoint={`${config.BASE_URL}api/delete_object`}
+  onDeleteComplete={handleDeleteComplete}
+  onDeleteError={handleDeleteError}
+>
+  {deleteError && (
+    <div className="text-red-500 mt-2">
+      <strong>Error:</strong> {deleteError}
+    </div>
+  )}
+  <div className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 transition-all duration-200 cursor-pointer">
+    <FaTrash className="text-lg" />
+    <span>Delete</span>
+  </div>
+</DeleteHandler>
+*/}
+
+             {/* Show Recycle only if not in Recycle Bin */}
+    {!objectData?.RubricPath?.toLowerCase().includes('recycle bin') && (
+      <button
+        className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 hover:bg-gray-100 px-2 py-1 rounded transition-all duration-200"
+        onClick={() => handleRecycle(objectData?.ObjectId)}
+      >
+        <FaTrash className="text-lg" />
+        <span>Recycle</span>
+      </button>
+    )}
+
+
           </div>
         )}
 
@@ -329,7 +455,7 @@ function ObjectDetail() {
                 <th>Type</th>
                 <th>Name</th>
                 <th>Value</th>
-                <th>Comment</th>
+                <th className="px-3 py-2 text-left w-1/3">Comment</th>
                 <th>Actions</th> {/* Add a column for actions */}
               </tr>
             </thead>
@@ -339,7 +465,11 @@ function ObjectDetail() {
                   <td>{prop?.type || 'N/A'}</td>
                   <td>{prop?.propertyname || 'N/A'}</td>
                   <td>{prop?.value || 'N/A'}</td>
-                  <td>{prop?.comment || 'No comments'}</td>
+                  <td className="whitespace-pre-wrap break-words px-3 py-2">
+                    {prop?.comment || 'No comments'}
+                  </td>
+
+
                   <td className="flex gap-2">
                     {/* Edit Button */}
                     <Link
@@ -393,7 +523,7 @@ function ObjectDetail() {
                   objectId={objectId} // Pass the current object ID
                   onStepAdded={() => {
                     fetchObjectData();
-                    console.log("Processing step added successfully!");
+                    //console.log("Processing step added successfully!");
                   }}
                 />
               </div>
@@ -403,7 +533,7 @@ function ObjectDetail() {
                 <SplitSample
                   objectId={objectId} // Pass the current object ID
                   onSplitComplete={(newSamples) => {
-                    console.log("Newly created samples:", newSamples);
+                    //console.log("Newly created samples:", newSamples);
                     fetchObjectData();
                   }}
                 />
@@ -412,7 +542,6 @@ function ObjectDetail() {
           )}
         </div>
       )}
-
       {/* Associated Objects */}
       {objectData?.AssociatedObjects?.length > 0 && (
         <div className="associated-section relative">
@@ -450,100 +579,122 @@ function ObjectDetail() {
 
           {isAssociatedOpen && (
             <div>
-              {/* Separate Measurements by Rubric Name */}
-              {Object.entries(
-                objectData.AssociatedObjects.reduce((grouped, obj) => {
+              {(() => {
+                const measurements = {};
+                const otherTypes = {};
+
+                objectData.AssociatedObjects.forEach((obj) => {
                   const typeName = obj?.linkedobjectid__typeid__typename || 'Unknown Type';
                   const rubricName = obj?.linkedobjectid__rubricid__rubricname || 'Unknown Area';
 
-                  if (typeName.toLowerCase() === 'composition') {
-                    if (!grouped.measurements) grouped.measurements = {};
-                    if (!grouped.measurements[rubricName]) grouped.measurements[rubricName] = [];
-                    grouped.measurements[rubricName].push(obj);
-                  } else {
-                    if (!grouped.others) grouped.others = [];
-                    grouped.others.push(obj);
+                  if (typeName && rubricName) {
+                    if (typeName.toLowerCase() === 'composition') {
+                      if (!measurements[rubricName]) measurements[rubricName] = [];
+                      measurements[rubricName].push(obj);
+                    } else {
+                      if (!otherTypes[typeName]) otherTypes[typeName] = [];
+                      otherTypes[typeName].push(obj);
+                    }
                   }
 
-                  return grouped;
-                }, {})
-              ).map(([group, data]) => {
-                if (group === 'measurements') {
-                  return Object.entries(data).map(([rubricName, items]) => (
-                    <div key={rubricName} className="mb-6">
-                      <div
-                        className="flex justify-between items-center bg-blue-100 p-4 rounded-md shadow-sm mb-4 cursor-pointer hover:bg-blue-200 transition-all duration-150"
-                        onClick={() =>
-                          setMeasurementOpen((prev) => ({
-                            ...prev,
-                            [rubricName]: !prev[rubricName],
-                          }))
-                        }
-                      >
-                        <h3 className="text-md font-medium text-blue-800">{rubricName}</h3>
-                        <span className="bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-full shadow">
-                          {items.length}
-                        </span>
-                      </div>
+                });
 
-                      {measurementOpen[rubricName] && (
+                const otherTypesKeys = Object.keys(otherTypes);
+                const showGroupingForOthers = otherTypesKeys.length > 1;
+
+                return (
+                  <>
+                    {/* Grouped Measurements */}
+                    {Object.entries(measurements).map(([rubricName, items]) => (
+                      <div key={rubricName} className="mb-6">
+                        <div
+                          className="flex justify-between items-center bg-blue-100 p-4 rounded-md shadow-sm mb-4 cursor-pointer hover:bg-blue-200 transition-all duration-150"
+                          onClick={() =>
+                            setMeasurementOpen((prev) => ({
+                              ...prev,
+                              [rubricName]: !prev[rubricName],
+                            }))
+                          }
+                        >
+                          <h3 className="text-md font-medium text-blue-800">{rubricName}</h3>
+                          <span className="bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-full shadow">
+                            {items.length}
+                          </span>
+                        </div>
+                        {measurementOpen[rubricName] && (
+                          <div className="associated-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {items.map((obj, index) => (
+                              <div key={index} className="object-card bg-white p-4 rounded-lg shadow-lg border-l-4 border-blue-500">
+                                <h3 className="font-bold text-xl text-blue-600 truncate">
+                                  <Link to={`/object/${obj?.linkedobjectid__objectid}`} className="hover:underline">
+                                    {obj?.linkedobjectid__objectname || 'Unknown Object'}
+                                  </Link>
+                                </h3>
+                                <p><strong>Type:</strong> {obj?.linkedobjectid__typeid__typename || 'Unknown'}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Grouped or Flat Other Types */}
+                    {showGroupingForOthers ? (
+                      Object.entries(otherTypes).map(([typeName, items]) => (
+                        <div key={typeName} className="mb-6">
+                          <div
+                            className="flex justify-between items-center bg-green-200 p-4 rounded-md shadow-sm mb-4 cursor-pointer hover:bg-yellow-200 transition-all duration-150"
+                            onClick={() =>
+                              setMeasurementOpen((prev) => ({
+                                ...prev,
+                                [typeName]: !prev[typeName],
+                              }))
+                            }
+                          >
+                            <h3 className="text-md font-medium text-indigo-800">{typeName}</h3>
+                            <span className="bg-indigo-600 text-white text-sm font-semibold py-1 px-3 rounded-full shadow">
+                              {items.length}
+                            </span>
+                          </div>
+                          {measurementOpen[typeName] && (
+                            <div className="associated-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {items.map((obj, index) => (
+                                <div key={index} className="object-card bg-white p-4 rounded-lg shadow-lg border-l-4 border-yellow-500">
+                                  <h3 className="font-bold text-xl text-red-600 truncate">
+                                    <Link to={`/object/${obj?.linkedobjectid__objectid}`} className="hover:underline">
+                                      {obj?.linkedobjectid__objectname || 'Unknown Object'}
+                                    </Link>
+                                  </h3>
+                                  <p><strong>Type:</strong> {obj?.linkedobjectid__typeid__typename || 'Unknown'}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      otherTypesKeys.length === 1 && (
                         <div className="associated-grid grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {items.map((obj, index) => (
-                            <div
-                              key={index}
-                              className="object-card bg-white p-4 rounded-lg shadow-lg border-l-4 border-blue-500"
-                            >
-                              <h3 className="font-bold text-xl text-blue-600 truncate">
-                                <Link
-                                  to={`/object/${obj?.linkedobjectid__objectid}`}
-                                  className="hover:underline"
-                                >
+                          {otherTypes[otherTypesKeys[0]].map((obj, index) => (
+                            <div key={index} className="object-card bg-white p-4 rounded-lg shadow-lg border-l-4 border-indigo-500">
+                              <h3 className="font-bold text-xl text-indigo-600 truncate">
+                                <Link to={`/object/${obj?.linkedobjectid__objectid}`} className="hover:underline">
                                   {obj?.linkedobjectid__objectname || 'Unknown Object'}
                                 </Link>
                               </h3>
-                              <p>
-                                <strong>Type:</strong>{' '}
-                                {obj?.linkedobjectid__typeid__typename || 'Unknown'}
-                              </p>
+                              <p><strong>Type:</strong> {obj?.linkedobjectid__typeid__typename || 'Unknown'}</p>
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  ));
-                } else {
-                  return (
-                    <div key="others" className="mb-6">
-                      <div className="associated-grid grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {data.map((obj, index) => (
-                          <div
-                            key={index}
-                            className="object-card bg-white p-4 rounded-lg shadow-lg border-l-4 border-blue-500"
-                          >
-                            <h3 className="font-bold text-xl text-blue-600 truncate">
-                              <Link
-                                to={`/object/${obj?.linkedobjectid__objectid}`}
-                                className="hover:underline"
-                              >
-                                {obj?.linkedobjectid__objectname || 'Unknown Object'}
-                              </Link>
-                            </h3>
-                            <p>
-                              <strong>Type:</strong>{' '}
-                              {obj?.linkedobjectid__typeid__typename || 'Unknown'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-              })}
+                      )
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
       )}
-
 
       {/* Referenced Objects */}
       {objectData?.ReferencedObjects?.length > 0 && (
@@ -586,8 +737,6 @@ function ObjectDetail() {
         <LsvsViewer filePath={`${config.BASE_URL}${objectData.FileUrl}`} />
       )}
 
-
-
       {/* Button Section */}
       <div className="flex flex-wrap justify-center mt-10 gap-4">
         <button
@@ -598,14 +747,29 @@ function ObjectDetail() {
         </button>
 
         {isSeccmType && (
-          <button
-            onClick={() => setIsLsvsOpen(!isLsvsOpen)}
-            className="bg-gradient-to-r from-green-500 to-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-green-600 hover:to-green-800 transition-transform transform hover:scale-105"
-          >
-
-            {isLsvsOpen ? 'Hide LSVs Input' : 'Load LSVs'}
-          </button>
+          <>
+            <button
+              onClick={() => setIsLsvsOpen(!isLsvsOpen)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-green-600 hover:to-green-800 transition-transform transform hover:scale-105"
+            >
+              <i className="fas fa-bolt"></i>
+              {isLsvsOpen ? 'Hide LSVs Input' : 'Load LSVs'}
+            </button>
+            {lsvSuccessMessage && (
+              <div className="w-full text-center mt-2 text-green-700 font-semibold bg-green-100 border border-green-300 px-4 py-2 rounded">
+                {lsvSuccessMessage}
+              </div>
+            )}
+          </>
         )}
+
+        <button
+          onClick={() => navigate(`/object/graph/${objectData?.ObjectNameUrl}`)}
+          className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-yellow-600 hover:to-green-800 transition-transform transform hover:scale-105"
+        >
+          <i className="fas fa-project-diagram"></i>
+          <span>Show Graph</span>
+        </button>
 
 
         <button
@@ -720,7 +884,7 @@ function ObjectDetail() {
                   if (objectId) {
                     url += `&objectId=${encodeURIComponent(objectId)}`;
                   }
-                  console.log("Navigating to URL:", url); // Debugging
+                  //console.log("Navigating to URL:", url); // Debugging
                   navigate(url);
                 } else {
                   console.error("RubricNameUrl is missing.");

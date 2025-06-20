@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db.models import Max
 import json
 from django.views.decorators.csrf import csrf_exempt
-
+from django.core.mail import send_mail
 # Set up logger
 logger = logging.getLogger(__name__)
 
@@ -142,6 +142,39 @@ def submit_object_and_handover(request):
         handover.save()
         # Print saved Handover data
         print("Saved Handover:", handover.__dict__)
+        
+
+        # Email notification to recipient (handover received)
+                # Email notification to recipient (handover received)
+        try:
+            subject = f"[RDMS] New Handover Request from {created_by.username}"
+            message = (
+                f"Dear {recipient_user.username},\n\n"
+                f"You have received a new handover request.\n\n"
+                f"Sample: {sample_object.objectname}\n"
+                f"Amount: {amount} {measurement_unit}\n"
+                f"Comments: {handover_object.objectdescription}\n"
+                f"From: {created_by.username}\n"
+                f"Time: {handover_object.field_created.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"Please log in to confirm the handover.\n\n"
+                f"Regards,\nRDMS System"
+            )
+
+            email_sent = send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [recipient_user.email],
+                fail_silently=False
+            )
+            if email_sent:
+                logger.info(f"Email successfully sent to recipient: {recipient_user.email}")
+            else:
+                logger.error(f"Email sending failed to: {recipient_user.email}")
+
+        except Exception as email_error:
+            logger.error(f"Failed to send email to recipient: {email_error}")
+
 
         return JsonResponse(
             {
@@ -169,6 +202,31 @@ def confirm_handover(request, handover_id):
             handover.destinationconfirmed = timezone.now()  # Set confirmation time
             handover.destinationcomments = comments  # Set recipient comments
             handover.save()
+            # Notify sender that the handover was confirmed
+            try:
+                sender_user = handover.handoverid.field_createdby  # Creator of the handover object
+
+                subject = f"[RDMS] Handover Confirmed by {handover.destinationuserid.username}"
+                message = (
+                    f"Dear {sender_user.username},\n\n"
+                    f"Your handover request for sample '{handover.sampleobjectid.objectname}' "
+                    f"has been confirmed by {handover.destinationuserid.username}.\n\n"
+                    f"Comments: {handover.destinationcomments}\n"
+                    f"Confirmed at: {handover.destinationconfirmed.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    f"Regards,\nRDMS System"
+                )
+
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [sender_user.email],
+                    fail_silently=False
+                )
+                print("Email sent to sender:", sender_user.email)
+
+            except Exception as e:
+                logger.error(f"Failed to send confirmation email to sender: {e}")
 
             # Print statements for debugging
             print("Handover Confirmation Time:", handover.destinationconfirmed)

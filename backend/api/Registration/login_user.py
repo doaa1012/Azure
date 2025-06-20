@@ -145,3 +145,4 @@ def login_user(request):
 
         except Aspnetusers.DoesNotExist:
             return JsonResponse({'status': 'fail', 'message': 'User not found'}, status=404)
+

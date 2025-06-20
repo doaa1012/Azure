@@ -25,7 +25,6 @@ ACCESS_CONTROL_MAP = {
     'private': 3
 }
 
-
 @csrf_exempt
 def create_ideas_and_plans(request):
     if request.method != 'POST':
@@ -92,11 +91,44 @@ def create_ideas_and_plans(request):
                 {'error': f"Object with name '{object_name}' already exists for this type and tenant."},
                 status=400
             )
+        
+        # Initialize variables early to avoid UnboundLocalError
+        type_info, tenant, rubric = None, None, None
 
-        # Handle file upload
+        # Validate and retrieve related objects BEFORE using them
+        try:
+            type_info = Typeinfo.objects.get(typename=type_name)
+        except Typeinfo.DoesNotExist:
+            logger.error(f"Type '{type_name}' does not exist.")
+            return JsonResponse({'error': f"Type '{type_name}' does not exist"}, status=400)
+
+        try:
+            tenant = Tenant.objects.get(tenantid=tenant_id)
+        except Tenant.DoesNotExist:
+            logger.error(f"Tenant ID '{tenant_id}' does not exist.")
+            return JsonResponse({'error': f"Tenant ID '{tenant_id}' does not exist"}, status=400)
+
+        if rubric_id:
+            try:
+                rubric = Rubricinfo.objects.get(rubricid=rubric_id)
+            except Rubricinfo.DoesNotExist:
+                logger.error(f"Rubric ID '{rubric_id}' does not exist.")
+                return JsonResponse({'error': f"Rubric ID '{rubric_id}' does not exist"}, status=400)
+
+        # Ensure 'type_info' is assigned before using it
+        if not type_info or not tenant:
+            return JsonResponse({'error': 'Invalid type or tenant data'}, status=400)
+      
+        
+          # Generate new Object ID
+        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
+        next_id = (max_id or 0) + 1
+        object_url = f"{object_name}_{next_id}"
+      # Handle file upload with structured directory
         file = request.FILES.get('filePath')
         file_path = None
         file_hash = None
+
         if file:
             file_hash = hashlib.md5(file.read()).hexdigest()
             file.seek(0)
@@ -118,31 +150,20 @@ def create_ideas_and_plans(request):
                     status=status.HTTP_409_CONFLICT
                 )
 
+            # Define structured file path
+            sample_folder = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}", f"type{type_info.typeid}", f"object{next_id}", "file")
+            os.makedirs(sample_folder, exist_ok=True)  # Create directories if they don’t exist
+
+            file_path = os.path.join(sample_folder, file.name)
+
             # Save the file
-            file_path = os.path.join(BASE_FILE_PATH, file.name)
             with open(file_path, 'wb') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
 
-        # Validate and retrieve related objects
-        try:
-            type_info = Typeinfo.objects.get(typename=type_name)
-            tenant = Tenant.objects.get(tenantid=tenant_id)
-            rubric = Rubricinfo.objects.get(rubricid=rubric_id) if rubric_id else None
-        except Typeinfo.DoesNotExist:
-            logger.error(f"Type '{type_name}' does not exist.")
-            return JsonResponse({'error': f"Type '{type_name}' does not exist"}, status=400)
-        except Tenant.DoesNotExist:
-            logger.error(f"Tenant ID '{tenant_id}' does not exist.")
-            return JsonResponse({'error': f"Tenant ID '{tenant_id}' does not exist"}, status=400)
-        except Rubricinfo.DoesNotExist:
-            logger.error(f"Rubric ID '{rubric_id}' does not exist.")
-            return JsonResponse({'error': f"Rubric ID '{rubric_id}' does not exist"}, status=400)
+        
 
-        # Generate new Object ID
-        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
-        next_id = (max_id or 0) + 1
-        object_url = f"{object_name}_{next_id}"
+       
 
         # Create Objectinfo instance
         new_object = Objectinfo(
@@ -166,6 +187,10 @@ def create_ideas_and_plans(request):
 
         # Save object in the database
         new_object.save()
+        # Update Objectinfo with file path and hash
+        new_object.objectfilepath = file_path
+        new_object.objectfilehash = file_hash
+        new_object.save(update_fields=['objectfilepath', 'objectfilehash'])
         logger.info(f"New Objectinfo created with ID {next_id}")
 
         # Process and save measurements

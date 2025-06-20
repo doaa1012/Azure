@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Routes, Route } from 'react-router-dom';
 import axios from 'axios';
-
+import config from '../../config_path';
 // TwoFactorAuth.jsx
 const TwoFactorAuth = () => {
   return (

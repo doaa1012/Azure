@@ -45,7 +45,7 @@ function DragDropFileUpload({ objectnameurl }) {
   };
 
   return (
-    <div className="flex justify-center items-center">
+    <div className="flex justify-center items-start min-h-screen bg-blue-50 py-10">
       <div className="shadow-md rounded-lg p-6 w-full max-w-4xl">
         <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center cursor-pointer h-60 w-full bg-blue-100"

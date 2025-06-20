@@ -24,7 +24,6 @@ import DynamicWorkflowCreator from './components/DynamicWorkflow/WorkflowCreatio
 import AllWorkflows from './components/DynamicWorkflow/AllWorkflows';
 import RenderWorkflowPage from './components/DynamicWorkflow/RenderWorkflowPage';
 import WorkflowDynamic from './components/DynamicWorkflow/WorkflowDynamic';
-import LsvsInputForm from './components/A/A01/LsvsInputForm';
 import ListEditor from './components/Create_object/ListOfObjects';
 import Register from './components/Registration/Registration Form';
 import Login from './components/Registration/Login Form';
@@ -35,16 +34,21 @@ import HandoverReport from './components/A/A01/HandoverReport';
 import EditDispatcher from './EditDispatcher';
 import EditAssociatedObjects from './components/edit_delete/EditAssociatedObjects';
 import WelcomePage from './components/Registration/WelcomePage';
-import ProtectedRoute from './components/Registration/ProtectedRoute';
 import AddHandoverForm from './components/Create_object/AddHandoverForm';
 import FileProcessingPage from './components/Create_object/FileProcessingPage';
 import AddPropertyForm from './components/Create_object/AddPropertyForm';
 import DragAndDropFileUploadProperty from './components/Create_object/DragAndDropFileUploadProperty';
+import CsvViewerPage from './components/CSVTable';
 import EditRubricChild from './components/edit_delete/EditChild';
 import { useAuth, AuthProvider } from './components/AuthContext';
 import EditPropertyPage from './components/edit_delete/EditPropertyPage';
 import AccountSettings from './components/Account_setting/AccountSettings';
-
+import SampleAssociationSearch from './components/Wrapper';
+import ObjectGraph from './components/A/A01/ObjectGraphPage';
+import UserHandoverReport from './components/A/A01/UserHandoverReport';
+import EmptySamplesTable from './components/Reports/EmptySamplesTable';
+import GoogleAuthSuccess from './components/Registration/GoogleAuthSuccess';
+import { TourProvider } from './components/Tour/TourProvider';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -56,7 +60,8 @@ function App() {
           <Route path="/start" element={<WelcomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+           <Route path="/google-auth-success" element={<GoogleAuthSuccess />} />
+
           <Route element={<MainLayout />}>
             <Route path="/" element={isAuthenticated ? <Home /> : <Navigate to="/start" />} />
             <Route path="/identity" element={isAuthenticated ? <AccountSettings /> : <Navigate to="/start" />} />
@@ -67,7 +72,7 @@ function App() {
             <Route path="/ObjectStatisticsTable" element={isAuthenticated ? <ObjectStatisticsTable /> : <Navigate to="/start" />} />
             <Route path="/IdeasAndExperimentsTable" element={isAuthenticated ? <IdeasAndExperimentsTable /> : <Navigate to="/start" />} />
             <Route path="/SamplesPerElementChart" element={isAuthenticated ? <SamplesPerElementChart /> : <Navigate to="/start" />} />
-            <Route path="/QueryForm" element={isAuthenticated ? <ObjectSearchPage /> : <Navigate to="/start" />} />
+            <Route path="/queryform" element={isAuthenticated ? <ObjectSearchPage /> : <Navigate to="/start" />} />
             <Route path="/area-a" element={isAuthenticated ? <AreaA /> : <Navigate to="/start" />} />
             <Route path="/general/:area" element={isAuthenticated ? <GeneralInfoList /> : <Navigate to="/start" />} />
             <Route path="/workflow-stage/:objectId" element={isAuthenticated ? <WorkflowTable /> : <Navigate to="/start" />} />
@@ -94,6 +99,7 @@ function App() {
 
             {/* Route with objectnameurl as a parameter for rubric-specific list editing */}
             <Route path="/list-of-objects/url/:objectnameurl" element={isAuthenticated ? <ListEditor /> : <Navigate to="/start" />} />
+            <Route path="/wrapper" element={isAuthenticated ? <SampleAssociationSearch /> : <Navigate to="/start" />} />
 
             <Route path="/create/:typeName" element={isAuthenticated ? <CreateSwitch /> : <Navigate to="/start" />} />
             <Route path="/create/new_container/:url_parent" element={isAuthenticated ? <CreateChild /> : <Navigate to="/start" />} />
@@ -107,6 +113,12 @@ function App() {
             <Route path="/edit/object/:objectType/:objectId" element={isAuthenticated ? <EditDispatcher /> : <Navigate to="/start" />} />
             <Route path="/edit-associated-objects/:objectId" element={isAuthenticated ? <EditAssociatedObjects /> : <Navigate to="/start" />} />
             <Route path="/edit-property/:propertyId" element={isAuthenticated ?<EditPropertyPage />: <Navigate to="/start" />} />
+            <Route path="/csv-viewer/:objectId" element={isAuthenticated ?<CsvViewerPage />: <Navigate to="/start" />} />
+            <Route path="/object/graph/:objectnameurl" element={isAuthenticated ? <ObjectGraph /> : <Navigate to="/start" />} />
+            <Route path="/User_Handover_Report" element={isAuthenticated ?<UserHandoverReport />: <Navigate to="/start" />} />
+            <Route path="/empty-samples" element={isAuthenticated ? <EmptySamplesTable /> : <Navigate to="/start" />}/>
+           
+        
 
           </Route>
         </Routes>
@@ -118,7 +130,9 @@ function App() {
 export default function AppWithProvider() {
   return (
     <AuthProvider>
-      <App />
+      <TourProvider>
+        <App />
+      </TourProvider>
     </AuthProvider>
   );
 }

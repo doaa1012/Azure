@@ -22,7 +22,6 @@ ACCESS_CONTROL_MAP = {
     'private': 3
 }
 
-
 def rubric_list(request):
     rubrics = Rubricinfo.objects.all().values('rubricid', 'rubricname', 'rubricnameurl')
     return JsonResponse(list(rubrics), safe=False)
@@ -146,7 +145,7 @@ def create_object(request):
         tenant_id = request.POST.get('tenantId')
         rubric_id = request.POST.get('rubricId', None)  # Optional
         object_name = request.POST.get('name')
-        object_url = request.POST.get('url', f"default-url-{datetime.now().strftime('%Y%m%d%H%M%S')}")
+        object_url = request.POST.get('url')
         sort_code = request.POST.get('sortCode', 0)
         description = request.POST.get('description', '')
         linked_object_id = request.POST.get('objectId', None)
@@ -226,12 +225,35 @@ def create_object(request):
                     status=status.HTTP_409_CONFLICT
                 )
 
-        # All validations passed, proceed to create the object
+           # Generate a new Object ID
+        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
+        next_id = (max_id or 0) + 1
+         #  Save uploaded file in BASE_FILE_PATH/tenantX/typeY/objectZ/
         if file:
-            file_path = os.path.join(BASE_FILE_PATH, file.name)
+            #  Create tenant, type, and object subdirectories if not exist
+            tenant_folder = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}")
+            type_folder = os.path.join(tenant_folder, f"type{type_info.typeid}")
+            object_folder = os.path.join(type_folder, f"object{next_id}")
+            os.makedirs(object_folder, exist_ok=True)
+
+            #  Define final file path
+            file_path = os.path.join(object_folder, file.name)
+
+            # Handle duplicate filenames: Rename if needed
+            counter = 1
+            original_file_path = file_path
+            while os.path.exists(file_path):
+                file_name, file_ext = os.path.splitext(file.name)
+                file_path = os.path.join(object_folder, f"{file_name}_{counter}{file_ext}")
+                counter += 1
+
+            #  Save the file
             with open(file_path, 'wb') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
+
+        if not object_url:
+            object_url = f"{object_name.replace(' ', '-').lower()}-{next_id}"
         # Before saving the object
         if Objectinfo.objects.filter(objectnameurl=object_url, tenantid=tenant).exists():
             return JsonResponse(
@@ -245,11 +267,6 @@ def create_object(request):
                 {'error': f"An object with the name '{object_name}' already exists for this tenant and type."},
                 status=status.HTTP_409_CONFLICT
             )
-
-        # Generate a new Object ID
-        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
-        next_id = (max_id or 0) + 1
-
         # Create Objectinfo instance
         new_object = Objectinfo(
             objectid=next_id,
@@ -265,7 +282,7 @@ def create_object(request):
             ispublished=False,
             externalid=request.POST.get('externalId'),
             objectname=object_name,
-            objectnameurl=object_url,
+            objectnameurl=f"{object_name.replace(' ', '-').lower()}-{next_id}",
             objectfilepath=file_path,
             objectfilehash=file_hash,
             objectdescription=description

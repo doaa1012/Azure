@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../components/AuthContext';
@@ -9,9 +9,18 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { setIsAuthenticated } = useAuth(); // Destructure setIsAuthenticated from useAuth
+  const { setIsAuthenticated } = useAuth();
 
-  const handleSubmit = async (e) => {
+
+useEffect(() => {
+  if (window.location.search.includes('registered=true')) {
+    alert("Registration successful via Google!");
+    window.history.replaceState({}, document.title, window.location.pathname);
+    navigate('/');  // or navigate('/dashboard') if you have a dashboard page
+  }
+}, []);
+
+   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -25,37 +34,33 @@ const Register = () => {
     };
 
     try {
-      const response = await axios.post(
-        `${config.BASE_URL}api/register/`, 
-        data, 
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await axios.post(`${config.BASE_URL}api/register/`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
       console.log('Registration successful:', response.data);
-      setIsAuthenticated(true);  // Update the auth state to logged in
-      navigate('/');  // Redirect to Home after successful registration
+      setIsAuthenticated(true);
+      navigate('/');
     } catch (error) {
       if (error.response && error.response.data) {
         const errorMessage = error.response.data.message;
-
-        // Check if the error is "User already exists"
         if (errorMessage.includes('User already exists')) {
           setError('User already exists. Please log in or use a different email.');
         } else {
           setError('Registration failed, please try again.');
         }
-
-        console.error('Registration failed:', error.response.data);
       } else {
-        console.error('An unexpected error occurred:', error);
         setError('An unexpected error occurred. Please try again.');
       }
     }
   };
 
+  const handleGoogleRegister = () => {
+    // Same as login: your backend will handle whether it's a login or a new registration
+    window.location.href = `${config.BASE_URL}auth/google/`;
+  };
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
@@ -120,8 +125,18 @@ const Register = () => {
             </button>
           </div>
         </form>
+        <div className="text-center mt-6">
+          <button
+            onClick={handleGoogleRegister}
+            className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out"
+          >
+            Register with Google
+          </button>
+        </div>
       </div>
+      
     </div>
+    
   );
 };
 

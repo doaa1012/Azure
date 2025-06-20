@@ -212,25 +212,25 @@ const handleSaveChanges = () => {
   }, [currentPage]);
 
   return (
-    <div className="edit-associated-objects-container bg-gray-100 p-10 min-h-screen">
+    <div className="edit-associated-objects-container bg-blue-50 p-10 min-h-screen">
       {isLoading && (
             <div className="loading-overlay">
                 <div className="spinner" />
                 <p>Saving changes, please wait...</p>
             </div>
         )}
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Edit Associated Objects</h1>
+      <h1 className="text-3xl font-bold text-blue-800 mb-8">Edit Associated Objects</h1>
 
       {/* Add New Objects Section */}
       <div className="add-objects-section mb-8 p-4 bg-white rounded-lg shadow">
-        <h2 className="text-2xl font-bold text-gray-700 mb-4">Add New Objects</h2>
+        <h2 className="text-2xl font-bold text-blue-700 mb-4">Add New Objects</h2>
         <div className="flex items-center gap-4 mb-4">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search objects by name or description"
-            className="border border-gray-300 rounded p-2 flex-grow"
+            className="border border-blue-300 rounded p-2 flex-grow"
           />
           <button
             onClick={() => {
@@ -243,7 +243,7 @@ const handleSaveChanges = () => {
           </button>
         </div>
         <div className="mb-4">
-          <label htmlFor="object-type" className="block text-gray-700 font-bold">
+          <label htmlFor="object-type" className="block text-blue-700 font-bold">
             Select Object Type:
           </label>
           <select
@@ -254,7 +254,7 @@ const handleSaveChanges = () => {
               setCurrentPage(1); // Reset to the first page
               handleSearch();
             }}
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-blue-300 rounded p-2 w-full"
           >
             <option value="">Select a type</option>
             {availableTypes.map((type) => (
@@ -267,11 +267,11 @@ const handleSaveChanges = () => {
 
         {searchResults.length > 0 && (
           <div className="search-results mt-4">
-            <h3 className="text-lg font-bold text-gray-700 mb-2">Search Results:</h3>
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Search Results:</h3>
             {searchResults.map((result) => (
               <div
                 key={result.objectid}
-                className="result-item bg-gray-50 p-4 rounded mb-2 flex justify-between items-center"
+                className="result-item bg-blue-50 p-4 rounded mb-2 flex justify-between items-center"
               >
                 <Link to={`/object/${result.objectid}`} className="text-blue-600 font-bold hover:underline">
                   {result.objectname || 'Unknown Object'}
@@ -288,7 +288,7 @@ const handleSaveChanges = () => {
               <button
                 onClick={handlePrevPage}
                 disabled={currentPage === 1}
-                className="bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded mr-2"
+                className="bg-blue-300 text-blue-700 font-bold py-1 px-3 rounded mr-2"
               >
                 Previous
               </button>
@@ -298,7 +298,7 @@ const handleSaveChanges = () => {
               <button
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
-                className="bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded ml-2"
+                className="bg-blue-300 text-blue-700 font-bold py-1 px-3 rounded ml-2"
               >
                 Next
               </button>

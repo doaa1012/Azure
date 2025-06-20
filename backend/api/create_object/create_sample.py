@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db.models import Max
 from django.utils import timezone
+import re
 import os
 import json
 import jwt
@@ -54,8 +55,8 @@ def create_sample(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Parsing request body
-        data = json.loads(request.body)
+        # Parsing request 
+        data = request.POST
         typename = data.get('typename')
         tenant_id = data.get('tenantId')
         rubric_name_url = data.get('RubricNameUrl')
@@ -65,8 +66,8 @@ def create_sample(request):
         elem_number = data.get('elemnumber', 0)
         substrate_id = data.get('substrate')
         access_control_value = data.get('accessControl', 'public')
-        int_properties = data.get('intProperties', [])
-        float_properties = data.get('floatProperties', [])
+        int_properties = json.loads(data.get('intProperties', '[]'))
+        float_properties = json.loads(data.get('floatProperties', '[]'))
 
         # Fetch necessary models
         type_info = Typeinfo.objects.get(typename=typename)
@@ -103,19 +104,44 @@ def create_sample(request):
             objectnameurl="placeholder-url",
             objectdescription=description
         )
-        new_object.save()
+        new_object.save()      
+         # Ensure file storage directory
+        sample_folder = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}", f"type{type_info.typeid}", f"object{next_object_id}")
+        os.makedirs(sample_folder, exist_ok=True)
 
-        # Update name and URL
-        new_object.objectname = f"{new_object.objectid} {form_name}"
-        new_object.objectnameurl = f"{form_name}-{new_object.objectid}"
-        new_object.save(update_fields=['objectname', 'objectnameurl'])
+        # Handle file upload
+        file = request.FILES.get('filePath')
+        if file:
+            file_hash = hashlib.md5(file.read()).hexdigest()
+            file.seek(0)
 
-        # Create Sample
+            file_path = os.path.join(sample_folder, file.name)
+            with open(file_path, 'wb') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            new_object.objectfilepath = file_path
+            new_object.objectfilehash = file_hash
+            new_object.save(update_fields=['objectfilepath', 'objectfilehash'])
+
+        max_sample_id = Sample.objects.aggregate(Max('sampleid'))['sampleid__max']
+        next_sample_id = (max_sample_id or 0) + 1
+        
+        # Create Sample with the next available sampleid
         Sample.objects.create(
-            sampleid_id=new_object.objectid,
+            sampleid_id=next_sample_id ,  # Using max sampleid instead of new_object.objectid
             elemnumber=elem_number,
             elements=elements
         )
+        # Update name and URL
+        sanitized_form_name = re.sub(r"[()\s]+", "-", form_name)  
+
+        # Update objectname and objectnameurl
+        new_object.objectname = f"{next_sample_id} {form_name}"
+        new_object.objectnameurl = f"{sanitized_form_name.lower()}-{new_object.objectid}"
+
+        # Save only the updated fields
+        new_object.save(update_fields=['objectname', 'objectnameurl'])
 
         # Handle integer properties
         for int_property in int_properties:
@@ -270,8 +296,10 @@ def add_processing_step_sample(request):
         new_object.save()
 
         # Create Sample and inherit elements from the parent
+        max_sample_id = Sample.objects.aggregate(Max('sampleid'))['sampleid__max']
+        next_sample_id = (max_sample_id or 0) + 1
         Sample.objects.create(
-            sampleid_id=new_object.objectid,
+            sampleid_id= next_sample_id ,
             elemnumber=parent_sample.elemnumber,
             elements=parent_sample.elements
         )
@@ -409,14 +437,16 @@ def split_sample_view(request):
                 accesscontrol=parent_object.accesscontrol,
                 ispublished=False,
                 objectname=child_name,
-                objectnameurl=f"{child_name.replace(' ', '-').lower()}",
+                objectnameurl=f"{child_name.replace(' ', '-').lower()}-{parent_object_id}",
                 objectdescription=child_description,
             )
             child_object.save()
-
+              
             # Create Sample inheriting from parent
+            max_sample_id = Sample.objects.aggregate(Max('sampleid'))['sampleid__max']
+            next_sample_id = (max_sample_id or 0) + 1
             Sample.objects.create(
-                sampleid_id=child_object.objectid,
+                sampleid_id=next_sample_id,
                 elemnumber=parent_sample.elemnumber,
                 elements=parent_sample.elements
             )

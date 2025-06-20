@@ -4,16 +4,7 @@ from django.utils import timezone
 import traceback
 import json
 import jwt
-from ..models import (
-    Typeinfo,
-    Tenant,
-    Aspnetusers,
-    Rubricinfo,
-    Objectinfo,
-    Objectlinkobject,
-    Propertyint,
-    Propertyfloat,
-)
+from ..models import Typeinfo,Tenant,Aspnetusers,Rubricinfo,Objectinfo,Objectlinkobject,Propertyint,Propertyfloat
 from django.conf import settings
 from django.db.models import Max
 import os
@@ -70,7 +61,7 @@ def create_object_with_properties(request):
         description = request.POST.get('description', '')
         linked_object_id = request.POST.get('objectId', None)  # ID of an existing object to link the new object to
         properties = request.POST.get('properties')  # JSON string from the frontend
-
+        
         # Parse and validate properties JSON
         if isinstance(properties, str):
             try:
@@ -81,7 +72,7 @@ def create_object_with_properties(request):
         if not isinstance(properties, list):
             return JsonResponse({'error': 'Properties must be a list of objects'}, status=400)
 
-        print("Parsed properties:", properties)
+        #print("Parsed properties:", properties)
 
         # Validate and retrieve required objects
         try:
@@ -100,21 +91,24 @@ def create_object_with_properties(request):
 
         access_control_value = request.POST.get('accessControl', 'public')
         access_control = ACCESS_CONTROL_MAP.get(access_control_value.lower(), 1)
+         # Generate a new Object ID
+        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
+        next_id = (max_id or 0) + 1
+        object_url = f"{object_name}_{next_id}"
 
-        # Handle file saving and check for duplicates
+        # Handle file saving with structured directory
         file = request.FILES.get('filePath')
         file_path = None
         file_hash = None
 
         if file:
-            # Calculate the file hash
+            # Compute file hash
             file_hash = hashlib.md5(file.read()).hexdigest()
             file.seek(0)  # Reset file pointer after reading for hash
 
             # Check if a file with the same hash already exists
             duplicate_object = Objectinfo.objects.filter(objectfilehash=file_hash).first()
             if duplicate_object:
-                # Return details of the existing object
                 return JsonResponse(
                     {
                         'error': 'File already exists with the same content.',
@@ -129,16 +123,14 @@ def create_object_with_properties(request):
                     status=status.HTTP_409_CONFLICT
                 )
 
-            # Save the file to the defined base path if no duplicate found
-            file_path = os.path.join(BASE_FILE_PATH, file.name)
+            # Define structured file path: /BASE_FILE_PATH/tenantX/typeY/objectZ/filename
+            object_folder = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}", f"type{type_info.typeid}", f"object{next_id}")
+            os.makedirs(object_folder, exist_ok=True)  # Create directories if they do not exist
+
+            file_path = os.path.join(object_folder, file.name)
             with open(file_path, 'wb') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
-
-        # Generate a new Object ID
-        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
-        next_id = (max_id or 0) + 1
-        object_url = f"{object_name}_{next_id}"
 
         # Create Objectinfo instance
         new_object = Objectinfo(

@@ -83,7 +83,13 @@ def create_reference(request):
         tenant = Tenant.objects.get(tenantid=tenant_id)
         created_by = Aspnetusers.objects.get(id=user_id)
         rubric = Rubricinfo.objects.get(rubricid=rubric_id) if rubric_id else None
-
+        
+        # Generate a new Object ID
+        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
+        next_id = (max_id or 0) + 1
+        # Construct the directory path: `/tenantX/typeY/objectZ/`
+        object_folder_path = os.path.join(BASE_FILE_PATH, f"tenant{tenant_id}", f"type{type_info.typeid}", f"object{next_id}")
+        os.makedirs(object_folder_path, exist_ok=True) 
         # Handle file upload
         file = request.FILES.get('filePath')
         file_path = None
@@ -112,9 +118,6 @@ def create_reference(request):
                 for chunk in file.chunks():
                     destination.write(chunk)
 
-        # Generate a new Object ID
-        max_id = Objectinfo.objects.aggregate(Max('objectid'))['objectid__max']
-        next_id = (max_id or 0) + 1
 
         # Create Objectinfo instance
         new_object = Objectinfo(

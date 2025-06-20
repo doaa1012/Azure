@@ -15,7 +15,7 @@ const CreateEDXObject = () => {
     type: typeName,
     rubricId: '',
     sortCode: 0,
-    accessControl: 'protected',
+    accessControl: '',
     name: '',
     url: '',
     filePath: '',
@@ -59,31 +59,35 @@ const CreateEDXObject = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true); // Show the loader
-
+    setLoading(true);
+  
     const token = localStorage.getItem('token');
     const payload = new FormData();
-
+  
     payload.append('tenantId', 4);
     payload.append('typeId', typeName);
     payload.append('rubricId', formData.rubricId);
     payload.append(
       'accessControl',
-      formData.accessControl === 'protected' ? 1 : formData.accessControl === 'public' ? 2 : 3
+      formData.accessControl === 'protected' ? 1 :
+      formData.accessControl === 'public' ? 2 :
+      formData.accessControl === 'protectednda' ? 3 :
+      formData.accessControl === 'private' ? 4 : 1
     );
+    payload.append('sortCode', formData.sortCode || 0);
     payload.append('name', formData.name);
     payload.append('url', formData.url);
     payload.append('description', formData.description);
-
+  
     if (objectId) {
-      console.log('Debug: objectId being sent:', objectId); // Log objectId
+      console.log('Debug: objectId being sent:', objectId);
       payload.append('objectId', objectId);
     }
-
+  
     if (formData.filePath) {
       payload.append('filePath', formData.filePath);
     }
-
+  
     fetch(`${config.BASE_URL}api/create_main_and_child_objects/`, {
       method: 'POST',
       headers: {
@@ -92,25 +96,32 @@ const CreateEDXObject = () => {
       body: payload,
     })
       .then(async (response) => {
+        const data = await response.json(); // ✅ Always parse JSON
         if (response.ok) {
-          const data = await response.json();
           if (data.success) {
             setSuccessMessage(data.success);
             setErrorMessage('');
-            setLoading(false); // Hide the loader
-            setTimeout(() => navigate(-2), 2000); // Go back one step
+            setLoading(false);
+            setTimeout(() => navigate(-2), 2000);
           } else {
             throw new Error(data.error || 'Unexpected error occurred.');
           }
         } else {
-          throw new Error(`Failed to process data: ${response.statusText}`);
+          // Show backend error instead of generic "Bad Request"
+          throw new Error(data.error || `Failed to process data: ${response.statusText}`);
         }
       })
       .catch((error) => {
         setErrorMessage(error.message || 'An unknown error occurred.');
-        setLoading(false); // Hide the loader
+        setLoading(false);
       });
   };
+  
+{!objectId && (
+  <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg mb-6 text-center font-semibold">
+    Object ID is missing. You cannot create an EDX object without linking to an existing sample.
+  </div>
+)}
 
   return (
     <div className="flex justify-center p-8 bg-blue-50 min-h-screen">
@@ -163,7 +174,7 @@ const CreateEDXObject = () => {
               name="rubricId"
               value={formData.rubricId}
               onChange={handleInputChange}
-              className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+              className="w-full p-3 bg-blue-50 border border-blue-300 rounded" required
               disabled={!!groupName}
             >
               <option value="">-- Select the Section --</option>
@@ -174,6 +185,22 @@ const CreateEDXObject = () => {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-lg font-semibold text-blue-800">Access Control</label>
+            <select
+              name="accessControl"
+              value={formData.accessControl}
+              onChange={handleInputChange}
+              className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+              required
+            >
+              <option value="">-- Select Access Control --</option>
+              <option value="public">Public</option>
+              <option value="protected">Protected</option>
+              <option value="protectednda">Protected NDA</option>
+              <option value="private">Private</option>
+            </select>
+          </div>
 
           {/* Name */}
           <div>
@@ -182,11 +209,34 @@ const CreateEDXObject = () => {
             </label>
             <input
               type="text"
-              name="name"
+              name="name" required
               value={formData.name}
               onChange={handleInputChange}
               className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
               placeholder="Enter object name"
+            />
+          </div>
+          <div>
+  <label className="block text-lg font-semibold text-blue-800">Sort Code</label>
+  <input
+    type="number"
+    name="sortCode"
+    value={formData.sortCode}
+    onChange={handleInputChange}
+    className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+    placeholder="Enter sort code (e.g. 0, 1, 2...)"
+  />
+</div>
+
+          <div>
+            <label className="block text-lg font-semibold text-blue-800">URL (unique)</label>
+            <input
+              type="text"
+              name="url"
+              value={formData.url}
+              onChange={handleInputChange}
+              className={`w-full p-3 bg-blue-50 border border-blue-300 rounded`}
+              placeholder="Enter unique URL"
             />
           </div>
 
@@ -221,16 +271,15 @@ const CreateEDXObject = () => {
           <div className="flex justify-between">
             <button
               type="button"
-              className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
               onClick={() => navigate(-1)} // Go back to the previous page
             >
               Close and Back to the Site
             </button>
             <button
               type="submit"
-              className={`bg-blue-500 text-white px-5 py-2 rounded-lg hover:bg-blue-600 transition ${
-                loading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className={`bg-green-500 text-white px-5 py-2 rounded-lg hover:bg-green-600 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               disabled={loading} // Disable button during loading
             >
               Save
@@ -241,5 +290,4 @@ const CreateEDXObject = () => {
     </div>
   );
 };
-
 export default CreateEDXObject;

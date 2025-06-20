@@ -15,22 +15,31 @@ function CreateChild() {
   const [rubricName, setRubricName] = useState(url_parent.toUpperCase());  // Capitalize the parent name
   const [errorMessage, setErrorMessage] = useState("");
   const tenantId = 4;  // Set tenantId to default to 4
-
+  const slugify = (str) => {
+    return str.toLowerCase().replace(/\s+/g, '-'); // "Recycle Bin" -> "recycle-bin"
+  };
+  
   // Fetch rubric info based on the url_parent
   useEffect(() => {
-    if (url_parent) {
-      // Fetch the rubric ID from the backend using url_parent
-      fetch(`${config.BASE_URL}api/rubric-id/${url_parent}/`)
+    if (url_parent && url_parent !== 'root') {
+      const safeUrl = slugify(url_parent);  // Convert to 'recycle-bin'
+  
+      fetch(`${config.BASE_URL}api/rubric-id/${safeUrl}/`)
         .then(response => response.json())
         .then(data => {
-          setParentId(data.rubricid); // Set the fetched rubric ID
+          console.log("Rubric ID Response:", data);
+          setParentId(data.rubricid);
         })
         .catch(error => {
           console.error('Error fetching rubric:', error);
-          setParentId('Unknown ID');  // Fallback in case of error
+          setParentId('Unknown ID');
         });
+    } else {
+      setParentId(null);
+      setRubricName('');
     }
   }, [url_parent]);
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,18 +65,18 @@ function CreateChild() {
   
     const formData = {
       name,
-      parent_id: parentId,
+      parent_id: parentId, // will be null for root
       sort_code: sortCode || 0,
-      access_control: accessControlValue, // Send the mapped numeric value
+      access_control: accessControlValue,
       text,
       tenant_id: tenantId,
-      created_by: userId, // Ensure userId is correctly passed
+      created_by: userId,
       updated_by: userId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      rubric_name: rubricName,
+      rubric_name: rubricName || name, // fallback to name if empty
     };
-  
+    
     fetch(`${config.BASE_URL}api/create_rubric/`, {
       method: "POST",
       headers: {
@@ -99,7 +108,13 @@ function CreateChild() {
           console.log("Redirecting to:", `/${url_parent}`);
   
           // Redirect to the main page for the parent node
-          window.location.assign(`/${url_parent}`);
+          if (url_parent === 'root') {
+            window.location.assign('/');  // Redirect to home
+          } else {
+            window.location.assign(`/${url_parent}`);
+          }
+          
+          
         } else {
           console.error("Error creating new rubric:", data);
           setErrorMessage("An unexpected error occurred while creating the rubric.");

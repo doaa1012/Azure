@@ -47,40 +47,45 @@ function LsvsViewer({ filePath }) {
     if (!data || (!plotAllAreas && !selectedArea)) return <p>No data available for plotting.</p>;
   
     const datasets = [];
+    let labels = [];
+  
     if (plotAllAreas) {
-      Object.keys(data).forEach((area) => {
-        const areaData = data[area];
+      Object.entries(data).forEach(([area, areaData]) => {
         datasets.push({
           label: `Area ${area}`,
-          data: areaData["Current density [A/cm^2]"],
+          data: areaData["Potential"].map((x, i) => ({
+            x: parseFloat(x.toFixed(3)),
+            y: parseFloat(areaData["Current density [A/cm^2]"][i])
+          })),
           borderColor: getRandomColor(),
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
-          pointRadius: 0, // Hide points
-          pointHoverRadius: 0, // Hide hover points
+          pointRadius: 0,
+          pointHoverRadius: 0,
         });
       });
     } else if (selectedArea) {
       const areaData = data[selectedArea];
       datasets.push({
-        label: `Current Density vs Potential - Area ${selectedArea}`,
-        data: areaData["Current density [A/cm^2]"],
+        label: `Area ${selectedArea}`,
+        data: areaData["Potential"].map((x, i) => ({
+          x: parseFloat(x.toFixed(3)),
+          y: parseFloat(areaData["Current density [A/cm^2]"][i])
+        })),
         borderColor: 'rgba(75, 192, 192, 1)',
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         fill: true,
-        pointRadius: 3, // Show points for selected area
-        pointHoverRadius: 5, // Larger hover points for selected area
+        pointRadius: 3,
+        pointHoverRadius: 5,
       });
     }
   
-    const plotData = {
-      labels: data[selectedArea]?.["Potential"].map((pot) => pot.toFixed(2)) || [],
-      datasets,
-    };
+    const plotData = { datasets };
   
     const options = {
       scales: {
         x: {
+          type: 'linear',
           title: {
             display: true,
             text: 'Potential (V)',
@@ -89,24 +94,25 @@ function LsvsViewer({ filePath }) {
         y: {
           title: {
             display: true,
-            text: 'Current Density (A/cm^2)',
+            text: 'Current Density (A/cm²)',
           },
         },
       },
       plugins: {
         legend: {
-          display: !plotAllAreas, // Hide legend when plotting all areas
+          display: false,
         },
       },
       elements: {
         line: {
-          tension: 0.3, // Smoother curves
+          tension: 0.3,
         },
       },
     };
   
     return <Line data={plotData} options={options} />;
   };
+  
   
 
   const getRandomColor = () => {

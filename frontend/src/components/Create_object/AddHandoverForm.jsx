@@ -45,51 +45,54 @@ function AddHandoverForm() {
     }
   }, []);
   
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const formErrors = {};
-  
-    if (!currentUserEmail) {
-      formErrors.sender = 'Sender is required.';
+ const handleSubmit = (e) => {
+  e.preventDefault();
+
+  if (isSubmitting) return; // Prevent multiple rapid clicks
+  setIsSubmitting(true);     // Lock submit immediately
+
+  const formErrors = {};
+
+  if (!currentUserEmail) {
+    formErrors.sender = 'Sender is required.';
+  }
+  if (!amount) formErrors.amount = 'Amount is required';
+  if (!measurementUnit) formErrors.measurementUnit = 'Measurement unit is required';
+  if (!recipient) formErrors.recipient = 'Recipient is required';
+
+  if (Object.keys(formErrors).length > 0) {
+    setErrors(formErrors);
+    setIsSubmitting(false); // Re-enable submit on error
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("typeId", "Handover");
+  formData.append("tenantId", 4);
+  formData.append("sender", currentUserEmail);
+  formData.append("amount", amount);
+  formData.append("measurementUnit", measurementUnit);
+  formData.append("recipient", recipient);
+  formData.append("comments", comments || '');
+  formData.append("sampleobjectid", objectId);
+
+  axios.post(`${config.BASE_URL}api/submit-handover/`, formData, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data'
     }
-    if (!amount) formErrors.amount = 'Amount is required';
-    if (!measurementUnit) formErrors.measurementUnit = 'Measurement unit is required';
-    if (!recipient) formErrors.recipient = 'Recipient is required';
-  
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-    } else {
-      setIsSubmitting(true);
-  
-      const formData = new FormData();
-      formData.append("typeId", "Handover"); // Adjust to the correct type if needed
-      formData.append("tenantId", 4);
-      formData.append("sender", currentUserEmail);
-      formData.append("amount", amount);
-      formData.append("measurementUnit", measurementUnit);
-      formData.append("recipient", recipient);
-      formData.append("comments", comments || ''); // Make sure comments is added, even if blank
-      formData.append("sampleobjectid", objectId);
-  
-      axios.post( `${config.BASE_URL}api/submit-handover/`, formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      .then(() => {
-        setIsSubmitting(false);
-        navigate(-1); // Redirect to the previous page
-      })
-      .catch(error => {
-        console.error('Error submitting handover:', error);
-        if (error.response) {
-          console.error('Response data:', error.response.data);
-        }
-        setIsSubmitting(false);
-      });
+  })
+  .then(() => {
+    navigate(-1); // Go back
+  })
+  .catch(error => {
+    console.error('Error submitting handover:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
     }
-  };
+    setIsSubmitting(false); // Re-enable only on failure
+  });
+};
   
 
   const handleClose = () => {

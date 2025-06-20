@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
+import config from '../../config_path';
 const Email = () => {
   const [currentEmail, setCurrentEmail] = useState('Fetching...');
   const [newEmail, setNewEmail] = useState('');
@@ -15,12 +15,12 @@ const Email = () => {
         return;
       }
 
-      const response = await axios.get('http://127.0.0.1:8000/api/user-profile/', {
+      const response = await axios.get(`${config.BASE_URL}api/user-profile/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
+      
       const { username } = response.data;
     //console.log('API Response:', response.data);
       setCurrentEmail(username || 'No email found');

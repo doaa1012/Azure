@@ -13,6 +13,7 @@ def get_full_file_path(object_filepath):
         return os.path.join(settings.BASE_FILE_PATH, relative_path_corrected)
     return None
 
+
 def download_file_response(file_path):
     """
     Generates a FileResponse if the file exists, or raises Http404.

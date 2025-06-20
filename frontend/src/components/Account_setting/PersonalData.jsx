@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-
+import config from '../../config_path';
 const PersonalData = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,12 +16,13 @@ const PersonalData = () => {
         return;
       }
 
-      const response = await axios.get('http://127.0.0.1:8000/api/personal-data/', {
+      const response = await axios.get(`${config.BASE_URL}api/personal-data/`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
+      
 
       if (response.status === 200) {
         // Convert the JSON data to a file and download it

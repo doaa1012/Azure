@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-
+import config from '../../config_path';
 const CreateSECCMLongRangeRaw = () => {
   const { typeName } = useParams();
   const navigate = useNavigate();
@@ -9,6 +9,8 @@ const CreateSECCMLongRangeRaw = () => {
   const queryParams = new URLSearchParams(location.search);
   const rubricnameurl = queryParams.get('rubricnameurl');
   const objectId = queryParams.get('objectId');
+  const [isRubricFromUrl, setIsRubricFromUrl] = useState(false);
+
   const ACCESS_CONTROL_MAP = {
     public: 'Public',
     protected: 'Protected',
@@ -34,7 +36,7 @@ const CreateSECCMLongRangeRaw = () => {
   const [rubrics, setRubrics] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/rubrics/')
+    fetch(`${config.BASE_URL}api/rubrics/`)
       .then((response) => response.json())
       .then((data) => {
         setRubrics(data);
@@ -47,6 +49,7 @@ const CreateSECCMLongRangeRaw = () => {
               ...prevData,
               rubricId: matchingRubric.rubricid,
             }));
+            setIsRubricFromUrl(true); // 👈 mark it came from URL
           } else {
             setErrorMessage('No matching rubric found for the provided URL.');
           }
@@ -54,6 +57,7 @@ const CreateSECCMLongRangeRaw = () => {
       })
       .catch((error) => console.error('Error fetching rubrics:', error));
   }, [rubricnameurl]);
+  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -152,21 +156,26 @@ const CreateSECCMLongRangeRaw = () => {
         </div>
 
         <div>
-          <label className="block text-lg font-semibold text-blue-800">Rubric</label>
-          <select
-            name="rubricId"
-            value={formData.rubricId}
-            onChange={handleInputChange}
-            className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
-          >
-            <option value="">-- Select Rubric --</option>
-            {rubrics.map((rubric) => (
-              <option key={rubric.rubricid} value={rubric.rubricid}>
-                {rubric.rubricname}
-              </option>
-            ))}
-          </select>
-        </div>
+  <label className="block text-lg font-semibold text-blue-800">
+    Area or Project to Belong
+  </label>
+  <select
+  name="rubricId"
+  value={formData.rubricId}
+  onChange={handleInputChange}
+  className="w-full p-3 bg-blue-50 border border-blue-300 rounded"
+  disabled={isRubricFromUrl} // 👈 disable only if URL pre-filled it
+>
+  <option value="">-- Select Rubric --</option>
+  {rubrics.map((rubric) => (
+    <option key={rubric.rubricid} value={rubric.rubricid}>
+      {rubric.rubricname}
+    </option>
+  ))}
+</select>
+
+</div>
+
 
 
           <div>

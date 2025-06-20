@@ -42,57 +42,37 @@ const ObjectStatisticsTable = () => {
   };
 
   return (
-    <div style={{ padding: '30px' }}>
-      {/* Header Section */}
-      <header style={{
-        backgroundColor: '#2072c9', 
-        color: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        textAlign: 'center',
-        marginBottom: '20px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-      }}>
-        <h1 style={{ fontSize: '2.5rem', margin: '0' }}>Object Statistics </h1>
-       
-      </header>
+    <div className="p-10 min-h-screen bg-blue-50">
+<header className="bg-blue-600 text-white p-5 rounded-lg text-center mb-5 shadow-md">
+  <h1 className="text-4xl font-bold m-0">Object Statistics</h1>
+</header>
 
-      {/* User Filter */}
-      <div style={{ marginBottom: '20px', textAlign: 'left' }}> {/* Aligning filter to the left */}
-        <label htmlFor="user-select" style={{ fontSize: '1.2rem', marginRight: '10px' }}>Filter by User:</label>
-        <select
-          id="user-select"
-          value={selectedUser}
-          onChange={handleUserChange}
-          style={{
-            padding: '10px',
-            fontSize: '1.2rem',
-            borderRadius: '8px',
-            border: '1px solid #ccc',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            width: '200px',
-          }}
-        >
-          <option value="">All Users</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.username}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      {/* Statistics Table */}
-      <div style={{ overflowX: 'auto', marginTop: '20px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#FF5722', color: 'white', textAlign: 'left' }}> {/* Orange header */}
-              <th style={{ padding: '12px', textAlign: 'center' }}>Object Count</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>TypeId</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Type Name</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Type Comment</th>
-            </tr>
-          </thead>
+<div className="mb-5 text-left">
+  <label htmlFor="user-select" className="text-lg mr-3">Filter by User:</label>
+  <select
+    id="user-select"
+    value={selectedUser}
+    onChange={handleUserChange}
+    className="p-2 text-lg rounded-lg border border-gray-300 shadow-sm w-52"
+  >
+    <option value="">All Users</option>
+    {users.map((user) => (
+      <option key={user.id} value={user.id}>{user.username}</option>
+    ))}
+  </select>
+</div>
+
+<div className="overflow-x-auto mt-5">
+  <table className="w-full border-collapse rounded-lg shadow-md">
+    <thead>
+      <tr className="bg-orange-600 text-white text-left">
+        <th className="p-3 text-center">Object Count</th>
+        <th className="p-3 text-center">TypeId</th>
+        <th className="p-3 text-center">Type Name</th>
+        <th className="p-3 text-center">Type Comment</th>
+      </tr>
+    </thead>
           <tbody>
             {statistics.length > 0 ? (
               statistics.map((stat, index) => (

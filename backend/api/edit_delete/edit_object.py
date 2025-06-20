@@ -67,10 +67,9 @@ def edit_object(request, object_id):
         tenant_id = parsed_data.get('tenantId', existing_object.tenantid.tenantid)
         rubric_id = parsed_data.get('rubricId', existing_object.rubricid.rubricid if existing_object.rubricid else None)
         object_name = parsed_data.get('name', existing_object.objectname)
-        object_url = parsed_data.get('url', existing_object.objectnameurl)
+        object_url = f"{slugify(object_name)}-{object_id}"
         sort_code = parsed_data.get('sortCode', existing_object.sortcode)
         description = parsed_data.get('description', existing_object.objectdescription)
-
         # Validate and retrieve required objects
         type_info = Typeinfo.objects.get(typename=type_name)
         tenant = Tenant.objects.get(tenantid=tenant_id)
@@ -111,6 +110,17 @@ def edit_object(request, object_id):
         existing_object.objectdescription = description
         existing_object.field_updated = timezone.now()
         existing_object.field_updatedby = updated_by
+
+        # Check for uniqueness of the updated objectnameurl within the tenant
+        if Objectinfo.objects.filter(
+            objectnameurl=object_url,
+            tenantid=tenant
+        ).exclude(objectid=object_id).exists():
+            return JsonResponse(
+                {'error': f"An object with the URL '{object_url}' already exists for the tenant."},
+                status=status.HTTP_409_CONFLICT
+            )
+
         existing_object.save()
 
         print(f"Object {object_id} updated successfully.")

@@ -11,6 +11,7 @@ from zipfile import ZipFile
 from io import BytesIO, StringIO
 import os
 import csv
+from collections import defaultdict
 from zipfile import ZipFile, ZIP_DEFLATED
 import pandas as pd  
 from django.core.paginator import Paginator
@@ -21,14 +22,28 @@ from .models import Objectinfo, Typeinfo, Aspnetusers
 from django.utils.html import format_html
 from django.utils import timezone
 from datetime import datetime
+from collections import defaultdict
 from django.http import JsonResponse
 from django.db.models import Q
-from .models import Objectinfo, Sample, Objectlinkrubric, Objectlinkobject
 from .utils.full_file_path import get_full_file_path, download_file_response
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import jwt
+import threading
+import time
+from django.db.models.functions import TruncMonth
+from .models import Objectinfo, Typeinfo, Aspnetuserclaims, Aspnetusers
 logger = logging.getLogger(__name__)
 BASE_FILE_PATH = settings.BASE_FILE_PATH  
+
+PROPERTY_TABLE_MAP = {
+    "propertystring": Propertystring,
+    "propertyint": Propertyint,
+    "propertyfloat": Propertyfloat,
+    "propertybigstring": Propertybigstring,
+}
 
 ACCESS_CONTROL_MAP = {
     'public': 0,
@@ -37,41 +52,30 @@ ACCESS_CONTROL_MAP = {
     'private': 3
 }
 
-
-    
 @csrf_exempt
 def get_rubricinfo_by_path(request):
     if request.method == "POST":
         try:
-            # Parse the rubricpath and user_id from the request body
             request_data = json.loads(request.body)
             rubricpath = request_data.get('rubricpath')
-            user_id = request_data.get('user_id')  # User ID passed from the frontend
-            
-            if not rubricpath:
-                return JsonResponse({'error': 'RubricPath is required'}, status=400)
-            if not user_id:
-                return JsonResponse({'error': 'User ID is required'}, status=400)
+            user_id = request_data.get('user_id')
 
-            # Query the Rubricinfo model for the specified RubricPath
+            if not rubricpath or not user_id:
+                return JsonResponse({'error': 'RubricPath and User ID are required'}, status=400)
+
             rubric_info = Rubricinfo.objects.filter(rubricpath=rubricpath).first()
             if not rubric_info:
                 return JsonResponse({'error': 'No RubricInfo found for the specified RubricPath'}, status=404)
 
-            # Fetch related Objectinfo records with access control logic
             related_objects = Objectinfo.objects.filter(
                 rubricid=rubric_info.rubricid
             ).filter(
-                Q(accesscontrol=0) |  # Public objects
-                Q(accesscontrol=1) |  # Protected objects
-                Q(accesscontrol=2) |  # Protected NDA objects
-                Q(accesscontrol=3, field_createdby_id=user_id)  # Private objects visible only to the creator
+                Q(accesscontrol=0) | Q(accesscontrol=1) |
+                Q(accesscontrol=2) | Q(accesscontrol=3, field_createdby_id=user_id)
             ).select_related('typeid')
 
-            # Fetch all matching Rubricinfo records
             rubric_infos = Rubricinfo.objects.filter(rubricpath__icontains=rubricpath)
 
-            # Prepare the rubric data
             rubric_data = [
                 {
                     'RubricID': rubric.rubricid,
@@ -79,12 +83,11 @@ def get_rubricinfo_by_path(request):
                     'RubricNameUrl': rubric.rubricnameurl,
                     'RubricPath': rubric.rubricpath,
                     'CreatedBy': rubric.field_createdby_id,
-                    'AccessControl': rubric.accesscontrol  # Include access control in response
+                    'AccessControl': rubric.accesscontrol
                 }
                 for rubric in rubric_infos
             ]
 
-            # Prepare the object data with type info and access control
             object_data = [
                 {
                     'ObjectID': obj.objectid,
@@ -94,12 +97,39 @@ def get_rubricinfo_by_path(request):
                     'CreatedBy': obj.field_createdby_id,
                     'TypeID': obj.typeid.typeid,
                     'TypeName': obj.typeid.typename,
-                    'AccessControl': obj.accesscontrol  # Include access control in response
+                    'AccessControl': obj.accesscontrol
                 }
                 for obj in related_objects
             ]
 
-            return JsonResponse({'rubric_data': rubric_data, 'object_data': object_data}, safe=False, status=200)
+            # ✅ Get linked objects via ObjectLinkRubric
+            linked_objects_raw = Objectlinkrubric.objects.filter(
+                rubricid=rubric_info.rubricid
+            ).select_related('objectid__typeid', 'objectid__field_createdby')
+
+            linked_object_data = []
+            for link in linked_objects_raw:
+                obj = link.objectid
+                if obj.accesscontrol in [0, 1, 2] or (obj.accesscontrol == 3 and obj.field_createdby_id == user_id):
+                    linked_object_data.append({
+                        'ObjectID': obj.objectid,
+                        'ObjectName': obj.objectname,
+                        'ObjectNameUrl': obj.objectnameurl,
+                        'RubricID': rubric_info.rubricid,
+                        'CreatedBy': obj.field_createdby_id,
+                        'TypeID': obj.typeid.typeid,
+                        'TypeName': obj.typeid.typename,
+                        'AccessControl': obj.accesscontrol,
+                        'LinkId': link.objectlinkrubricid,         
+                        'SortCode': link.sortcode,
+                        'LinkCreatedBy': link.field_createdby_id        
+                    })
+
+            return JsonResponse({
+                'rubric_data': rubric_data,
+                'object_data': object_data,
+                'linked_object_data': linked_object_data  # Include this in the response
+            }, safe=False, status=200)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
@@ -108,17 +138,10 @@ def get_rubricinfo_by_path(request):
 
 
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-import jwt
-from .models import Objectinfo, Sample, Objectlinkrubric, Objectlinkobject
-
 @csrf_exempt
 def objectinfo_list(request, rubricnameurl):
     if request.method == "GET":
         try:
-            # Retrieve the user_id from the token or request headers
             token = request.headers.get('Authorization', '').split('Bearer ')[-1]
             user_id = None
             if token:
@@ -128,38 +151,48 @@ def objectinfo_list(request, rubricnameurl):
                 except Exception as e:
                     return JsonResponse({'error': f'Invalid token: {str(e)}'}, status=401)
 
-            # Ensure user_id is available
             if not user_id:
                 return JsonResponse({'error': 'User ID is required for private object access'}, status=400)
 
-            # Filter Objectinfo based on rubricnameurl
-            object_info = Objectinfo.objects.select_related('rubricid', 'field_createdby') \
-                                            .filter(rubricid__rubricnameurl__icontains=rubricnameurl) \
-                                            .filter(
-                                                Q(accesscontrol=0) |  # Public objects
-                                                Q(accesscontrol=1) |  # Protected objects
-                                                Q(accesscontrol=2) |  # Protected NDA objects
-                                                Q(accesscontrol=3, field_createdby_id=user_id)  # Private objects visible only to the creator
-                                            )
-            seen_rubricids = {}
+            root_rubric = Rubricinfo.objects.filter(rubricnameurl=rubricnameurl).first()
+            if not root_rubric:
+                return JsonResponse({'error': 'Rubric not found.'}, status=404)
 
-            # Prepare the main data structure for the response
+            child_rubrics = Rubricinfo.objects.filter(parentid=root_rubric.rubricid)
+            all_rubrics = [root_rubric] + list(child_rubrics)
+            all_rubric_ids = [r.rubricid for r in all_rubrics]
+
+            # Step 1: Initialize all rubric containers
+            seen_rubricids = {
+                rubric.rubricid: {
+                    'Rubric ID': rubric.rubricid,
+                    'Rubric Name': rubric.rubricname,
+                    'Rubric Name URL': rubric.rubricnameurl,
+                    'Rubric Path': rubric.rubricpath,
+                    'Rubric Level': rubric.level,
+                    'CreatedBy': rubric.field_createdby_id,
+                    'Objects': [],
+                    'Linked Objects': [],
+                    'Parent Objects': []
+                }
+                for rubric in all_rubrics
+            }
+
+
+            # Step 2: Add Objects
+            object_info = Objectinfo.objects.select_related('rubricid', 'field_createdby') \
+                .filter(rubricid__in=all_rubric_ids) \
+                .filter(
+                    Q(accesscontrol=0) |
+                    Q(accesscontrol=1) |
+                    Q(accesscontrol=2) |
+                    Q(accesscontrol=3, field_createdby_id=user_id)
+                )
+
             for obj in object_info:
                 rubric_id = obj.rubricid_id
                 object_id = obj.objectid
 
-                if rubric_id not in seen_rubricids:
-                    seen_rubricids[rubric_id] = {
-                        'Rubric ID': rubric_id,
-                        'Rubric Name': obj.rubricid.rubricname if obj.rubricid else None,
-                        'Rubric Name URL': obj.rubricid.rubricnameurl if obj.rubricid else None,
-                        'Rubric Path': obj.rubricid.rubricpath if obj.rubricid else None,
-                        'Objects': [],
-                        'Linked Objects': [],
-                        'Parent Objects': []
-                    }
-
-                # Try to get the corresponding Sample for this Objectinfo
                 try:
                     sample = Sample.objects.get(sampleid=obj)
                     sample_data = {
@@ -174,7 +207,6 @@ def objectinfo_list(request, rubricnameurl):
                         'Elements': None
                     }
 
-                # Append object details, including created_by
                 seen_rubricids[rubric_id]['Objects'].append({
                     'Object ID': object_id,
                     'Object Name': obj.objectname,
@@ -183,19 +215,17 @@ def objectinfo_list(request, rubricnameurl):
                         'Type Name': obj.typeid.typename if obj.typeid else None,
                     },
                     'Sample': sample_data,
-                    'created_by': obj.field_createdby_id  # Include the creator's user ID
+                    'created_by': obj.field_createdby_id
                 })
 
-            # Fetch and associate Linked Objects based on rubric_ids
-            rubric_ids = list(seen_rubricids.keys())
+            # Step 3: Add Linked Objects
             linked_objects = Objectlinkrubric.objects.select_related('objectid', 'objectid__typeid', 'rubricid', 'objectid__field_createdby') \
-                                                    .filter(rubricid_id__in=rubric_ids)
+                .filter(rubricid_id__in=all_rubric_ids)
 
             for link in linked_objects:
                 rubric_id = link.rubricid_id
                 linked_object_id = link.objectid.objectid
 
-                # Try to get the corresponding Sample for this linked Objectinfo
                 try:
                     sample = Sample.objects.get(sampleid=link.objectid)
                     sample_data = {
@@ -210,7 +240,6 @@ def objectinfo_list(request, rubricnameurl):
                         'Elements': None
                     }
 
-                # Populate the 'Linked Objects' list with actual data, including created_by
                 linked_object_data = {
                     'Object ID': linked_object_id,
                     'Object Name': link.objectid.objectname,
@@ -219,14 +248,13 @@ def objectinfo_list(request, rubricnameurl):
                         'Type Name': link.objectid.typeid.typename if link.objectid.typeid else None,
                     },
                     'Sample': sample_data,
-                    'created_by': link.objectid.field_createdby_id  # Include the creator's user ID
+                    'created_by': link.objectid.field_createdby_id
                 }
 
                 seen_rubricids[rubric_id]['Linked Objects'].append(linked_object_data)
 
-                # Fetch parent objects (those that have the current linked object as their child)
                 parent_links = Objectlinkobject.objects.select_related('objectid', 'objectid__typeid') \
-                                                      .filter(linkedobjectid=link.objectid)
+                    .filter(linkedobjectid=link.objectid)
 
                 for parent_link in parent_links:
                     parent_object_id = parent_link.objectid.objectid
@@ -238,33 +266,39 @@ def objectinfo_list(request, rubricnameurl):
                             'Type ID': parent_link.objectid.typeid.typeid if parent_link.objectid.typeid else None,
                             'Type Name': parent_link.objectid.typeid.typename if parent_link.objectid.typeid else None,
                         },
-                        'Sample': None  # If needed, you can fetch the sample data as well
+                        'Sample': None
                     }
 
-                    # Avoid adding duplicate parent objects
                     if parent_object_data not in seen_rubricids[rubric_id]['Parent Objects']:
                         seen_rubricids[rubric_id]['Parent Objects'].append(parent_object_data)
 
-            # Return only the filtered and relevant data for the specified `rubricnameurl`
-            filtered_data = list(seen_rubricids.values())
-            return JsonResponse(filtered_data, safe=False)
+            return JsonResponse(list(seen_rubricids.values()), safe=False)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-    else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
 
+
+@csrf_exempt
 def object_detail(request, object_id):
     try:
-        # Retrieve the object with related type and rubric
-        obj = Objectinfo.objects.select_related('typeid', 'rubricid', 'field_createdby', 'field_updatedby').get(objectid=object_id)
+        # Check if object_id is numeric
+        if str(object_id).isdigit():
+            obj = Objectinfo.objects.select_related('typeid', 'rubricid', 'field_createdby', 'field_updatedby').get(objectid=int(object_id))
+        else:
+            obj = Objectinfo.objects.select_related('typeid', 'rubricid', 'field_createdby', 'field_updatedby').get(objectnameurl=object_id)
+            object_id = obj.objectid  # Assign the retrieved objectid to object_id for consistency
 
-        # Get RubricNameUrl from Rubricinfo
+        # Get RubricNameUrl and RubricPath from Rubricinfo
         rubric_name_url = None
+        rubric_path = None
         if obj.rubricid:
-            rubric_name_url = obj.rubricid.rubricnameurl
+            rubric = obj.rubricid
+            rubric_name_url = rubric.rubricnameurl
+            rubric_path = rubric.rubricpath
 
         # Retrieve associated and reverse-referenced objects
         associated_objects = Objectlinkobject.objects.filter(objectid=object_id).values(
@@ -320,7 +354,9 @@ def object_detail(request, object_id):
 
         # Generate file details
         file_url = f"/download-file/{obj.objectid}/" if obj.objectfilepath else None
-        file_name = obj.objectnameurl or 'Unnamed File'
+
+        # Extract file name from `objectfilepath` if available
+        file_name = os.path.basename(obj.objectfilepath) if obj.objectfilepath else (obj.objectnameurl or 'Unnamed File')
 
         # Retrieve reference details
         reference_data = {}
@@ -347,6 +383,7 @@ def object_detail(request, object_id):
             'ObjectId': obj.objectid,
             'RubricId': obj.rubricid_id if obj.rubricid else None,
             'RubricNameUrl': rubric_name_url,
+            'RubricPath': rubric_path,  # dded rubric path
             'ObjectName': obj.objectname,
             'Type': {
                 'TypeId': obj.typeid.typeid if obj.typeid else None,
@@ -387,13 +424,27 @@ def object_detail(request, object_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-
-
-
-
+@csrf_exempt
+def get_rubricnameurl(request, rubricname):
+    """
+    Fetch the rubricnameurl for a given rubricname.
+    """
+    try:
+        rubric = get_object_or_404(Rubricinfo, rubricname=rubricname)
+        return JsonResponse({"rubricnameurl": rubric.rubricnameurl})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    
 def get_handover_detail(request, sampleobjectid):
     try:
-        # Retrieve all handover records associated with the given sampleobjectid
+        # Check if sampleobjectid is numeric or rubricnameurl
+        if str(sampleobjectid).isdigit():
+            object_instance = Objectinfo.objects.get(objectid=int(sampleobjectid))
+        else:
+            object_instance = Objectinfo.objects.get(objectnameurl=sampleobjectid)
+            sampleobjectid = object_instance.objectid  # Assign actual objectid
+
+        # Retrieve all handover records associated with the resolved sampleobjectid
         handovers = Handover.objects.select_related(
             'handoverid', 'sampleobjectid', 'handoverid__field_createdby', 'destinationuserid'
         ).filter(sampleobjectid=sampleobjectid)
@@ -401,7 +452,6 @@ def get_handover_detail(request, sampleobjectid):
         # Prepare data for each handover record
         handover_data_list = []
         for handover in handovers:
-            # Retrieve the object description as the sender's comments
             sender_comments = handover.handoverid.objectdescription
 
             handover_data = {
@@ -414,22 +464,26 @@ def get_handover_detail(request, sampleobjectid):
                 'Sent': handover.handoverid.field_created,
                 'Amount': handover.amount,
                 'MeasurementUnit': handover.measurementunit,
-                'SenderComments': sender_comments,  # Use objectdescription for sender comments
+                'SenderComments': sender_comments,
                 'Recipient': {
                     'Id': handover.destinationuserid.id,
                     'Username': handover.destinationuserid.username,
                     'Email': handover.destinationuserid.email
                 },
-                'destinationconfirmed': handover.destinationconfirmed,  # Destination confirmation time
-                'destinationcomments': handover.destinationcomments  # Recipient comments
+                'destinationconfirmed': handover.destinationconfirmed,
+                'destinationcomments': handover.destinationcomments
             }
             handover_data_list.append(handover_data)
 
-        # Return all handover records as a JSON response
         return JsonResponse(handover_data_list, safe=False)
 
+    except Objectinfo.DoesNotExist:
+        return JsonResponse({'error': 'Object not found'}, status=404)
+
     except Exception as e:
+        logger.error(f"Error in get_handover_detail view: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
 
 
     except Exception as e:
@@ -444,8 +498,6 @@ def get_rubric_path(request, object_id):
         return JsonResponse({'rubricpath': rubricpath})
     except Objectinfo.DoesNotExist:
         return JsonResponse({'rubricpath': 'Unknown Path'}, status=404)
-
-
 
 
 def download_file(request, object_id):
@@ -469,13 +521,7 @@ def download_file(request, object_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-
-
-
-
-
 # element_composition_view
-
 def element_composition_view(request):
     # Fetch all Objectinfo records where the typename is 'Composition'
     composition_type = Typeinfo.objects.get(typename='Composition')
@@ -510,57 +556,62 @@ def get_typenames(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# monthly_object_increase_view
+
+
+def user_claims_view(request):
+    claims = Aspnetuserclaims.objects.exclude(claimvalue__isnull=True).exclude(claimvalue="") \
+                .values_list('claimvalue', flat=True).distinct()
+    return JsonResponse(list(claims), safe=False)
+
 
 def monthly_object_increase_view(request):
     try:
-        # Get the object type names from request parameters as a list
         type_names = request.GET.getlist('typename')
-
-        # Log the type_names for debugging
-        print("Received type names:", type_names)
+        user_id = request.GET.get('user_id') or None
+        claim_value = request.GET.get('claimvalue') or None
 
         if not type_names:
             return JsonResponse({'error': 'Object type name(s) required'}, status=400)
 
-        # Fetch Typeinfo objects for the selected type names
         types = Typeinfo.objects.filter(typename__in=type_names)
-        
         if not types.exists():
-            print("No matching types found for:", type_names)
             return JsonResponse({'error': 'Invalid Object Type Name(s)'}, status=404)
 
-        # Get all Objectinfo records for the filtered types
         object_infos = Objectinfo.objects.filter(typeid__in=types)
 
-        # Group by typename and month of creation, and count the occurrences
+        # Collect user IDs based on claim if provided
+        user_ids_with_claim = []
+        if claim_value:
+            user_ids_with_claim = list(
+                Aspnetuserclaims.objects.filter(claimvalue=claim_value)
+                .values_list('userid_id', flat=True)
+            )
+
+        # Combine user_id and claim_value filtering (OR logic)
+        if user_id or user_ids_with_claim:
+            object_infos = object_infos.filter(
+                Q(field_createdby_id=user_id) | Q(field_createdby_id__in=user_ids_with_claim)
+            )
+
+        # Group by month and typename
         monthly_data = object_infos.annotate(
             month=TruncMonth('field_created'),
             typename=F('typeid__typename')
         ).values('typename', 'month').annotate(count=Count('objectid')).order_by('typename', 'month')
 
-        # Prepare data for the response
+        # Format response
         data = {}
         for entry in monthly_data:
             typename = entry['typename']
             month = entry['month']
             count = entry['count']
+            data.setdefault(typename, []).append({'month': month, 'count': count})
 
-            if typename not in data:
-                data[typename] = []
-
-            data[typename].append({
-                'month': month,
-                'count': count
-            })
-
-        print("Successfully retrieved and processed monthly data")
         return JsonResponse(data, safe=False)
 
     except Exception as e:
         print(f"Error occurred: {e}")
         return JsonResponse({'error': str(e)}, status=500)
-
 
 
 # synthesis requests view
@@ -748,7 +799,7 @@ def search_table_view(request):
 
             # Initialize queryset
             objectinfos = Objectinfo.objects.all()
-
+            
             # Filter by Object ID
             if object_id:
                 objectinfos = objectinfos.filter(objectid=object_id)
@@ -783,6 +834,27 @@ def search_table_view(request):
             # Filter by date range
             if start_date and end_date:
                 objectinfos = objectinfos.filter(field_created__range=(start_date, end_date))
+            properties = data.get("properties", [])
+            if properties:
+                for prop in properties:
+                    table_key = prop.get("table")
+                    name = prop.get("name")
+                    value = prop.get("value")
+
+                    if not table_key or not name or value is None:
+                        continue
+
+                    model = PROPERTY_TABLE_MAP.get(table_key.lower())
+                    if not model:
+                        continue
+
+                    # Find object IDs matching this property condition
+                    matching_ids = model.objects.filter(
+                        propertyname=name,
+                        value__icontains=value if isinstance(value, str) else value
+                    ).values_list("objectid", flat=True)
+
+                    objectinfos = objectinfos.filter(objectid__in=matching_ids)
 
             # Filter by selected measurements
             if selected_measurements:
@@ -794,19 +866,43 @@ def search_table_view(request):
             # Paginate the results
             paginator = Paginator(objectinfos, page_size)
             paginated_results = paginator.get_page(page)
-
-            # Prepare the result data
+            
             results_data = []
             for obj in paginated_results:
                 type_name = obj.typeid.typename if obj.typeid else 'Unknown'
+
+                # Related sample data
+                try:
+                    sample = Sample.objects.get(sampleid=obj.objectid)
+                    elem_number = sample.elemnumber
+                    elements_str = sample.elements
+                except Sample.DoesNotExist:
+                    elem_number = None
+                    elements_str = None
+
+                # Safe file check
+                file_url = None
+                file_name = None
+                if obj.objectfilepath:
+                    file_path = get_full_file_path(obj.objectfilepath)
+                    if file_path and os.path.exists(file_path):
+                        file_url = f'/api/download-file/{obj.objectid}/'
+                        file_name = os.path.basename(file_path)
+
+
                 results_data.append({
                     'objectid': obj.objectid,
                     'objectname': obj.objectname,
                     'typeid__typename': type_name,
                     'field_created': obj.field_created,
-                    'field_createdby__username': obj.field_createdby.username,  # Username for display
-                    'objectfilepath': obj.objectfilepath
+                    'field_createdby__username': obj.field_createdby.username,
+                    'download_url': file_url,
+                    'file_name': file_name,
+                    'elemnumber': elem_number,
+                    'elements': elements_str,
+                    'accesscontrol': obj.accesscontrol,
                 })
+
 
             # Return the paginated results with metadata
             response_data = {
@@ -841,7 +937,8 @@ def search_dataset_view(request):
             end_date = data.get('end_date', '')
             object_id = data.get('object_id', '')  # Add Object ID here
             selected_measurements = data.get('selectedMeasurements', [])
-            
+            properties = data.get("properties", [])
+
             # Pagination parameters
             page = int(data.get('page', 1))  # Default to page 1
             page_size = int(data.get('page_size', 30))  # Default to 30 results per page
@@ -887,7 +984,25 @@ def search_dataset_view(request):
 
             # Order the queryset by 'field_created' before pagination
             objectinfos = objectinfos.order_by('field_created')
+            if properties:
+                for prop in properties:
+                    table_key = prop.get("table")
+                    name = prop.get("name")
+                    value = prop.get("value")
 
+                    if not table_key or not name or value is None:
+                        continue
+
+                    model = PROPERTY_TABLE_MAP.get(table_key.lower())
+                    if not model:
+                        continue
+
+                    matching_ids = model.objects.filter(
+                        propertyname=name,
+                        value__icontains=value if isinstance(value, str) else value
+                    ).values_list("objectid", flat=True)
+
+                    objectinfos = objectinfos.filter(objectid__in=matching_ids)
             # Apply pagination to the queryset
             paginator = Paginator(objectinfos, page_size)
             paginated_results = paginator.get_page(page)
@@ -920,6 +1035,13 @@ def search_dataset_view(request):
                     if o.objectfilepath and o.objectfilepath.lower() != 'null':
                         has_files = True
                         file_paths.append(o.objectfilepath)
+                try:
+                    sample = Sample.objects.get(sampleid=obj.objectid)
+                    elem_number = sample.elemnumber
+                    elements_str = sample.elements
+                except Sample.DoesNotExist:
+                    elem_number = None
+                    elements_str = None
 
                 # Unify the field names with the table search
                 results_data.append({
@@ -930,7 +1052,9 @@ def search_dataset_view(request):
                     'field_createdby__username': obj.field_createdby.username if obj.field_createdby else 'Unknown',  # Unifying the field name
                     'has_files': has_files,  # Indicates if files are available for download
                     'filepath': obj.objectfilepath,
-                    'objectdescription': description  # Use the generated description
+                    'objectdescription': description,
+                     'elemnumber': elem_number,
+                    'elements': elements_str,
                 })
 
             # Return the paginated results with pagination info
@@ -949,150 +1073,99 @@ def search_dataset_view(request):
 
 
 
-
 # download_dataset
-
 @csrf_exempt
 def download_dataset(request, object_id):
     try:
-        # Retrieve the main object from the database
+        # Retrieve the main object
         obj = Objectinfo.objects.get(objectid=object_id)
 
-        # Get the name and description from the main object
-        dataset_name = obj.objectname or "Unnamed Dataset"
-    
-        # Get associated and reverse-referenced objects
+        # Get associated objects
         associated_objects = Objectlinkobject.objects.filter(objectid=obj.objectid).select_related('linkedobjectid')
         reverse_referenced_objects = Objectlinkobject.objects.filter(linkedobjectid=obj.objectid).select_related('objectid')
 
-        # Combine all relevant objects
+        # Collect related objects
         all_objects = [obj] + [o.linkedobjectid for o in associated_objects] + [o.objectid for o in reverse_referenced_objects]
 
-        # Collect all file paths and gather typename for JSON
+        # Collect file paths and type-name mappings
         file_paths = []
         typename_file_mapping = {}
-        
+
         for o in all_objects:
             if o.objectfilepath and o.objectfilepath.lower() != 'null':
-                file_paths.append(o.objectfilepath)
+                full_path = os.path.join(BASE_FILE_PATH, o.objectfilepath.strip().lstrip('/'))
+                if os.path.exists(full_path):
+                    file_paths.append(full_path)
 
-                # Get the typename from Typeinfo based on typeid (fix here: ensure you're passing o.typeid_id)
-                try:
-                    # Access the typeid correctly with _id to get the integer
-                    typeinfo = Typeinfo.objects.get(typeid=o.typeid_id)
-                    typename = typeinfo.typename
-                    filename = os.path.basename(o.objectfilepath)
-
-                    # Add to typename_file_mapping
-                    if typename in typename_file_mapping:
-                        typename_file_mapping[typename].append(filename)
-                    else:
-                        typename_file_mapping[typename] = [filename]
-                except Typeinfo.DoesNotExist:
-                    continue
-
-        # Debug: Print file paths and typename mapping
-        print(f"File paths collected: {file_paths}")
-        print(f"Typename to file mapping: {typename_file_mapping}")
+                    # Get typename from Typeinfo
+                    try:
+                        typeinfo = Typeinfo.objects.get(typeid=o.typeid_id)
+                        typename = typeinfo.typename
+                        filename = os.path.basename(full_path)
+                        typename_file_mapping.setdefault(typename, []).append(filename)
+                    except Typeinfo.DoesNotExist:
+                        continue
 
         # Prepare ZIP file path
         zip_file_path = os.path.join(BASE_FILE_PATH, f'dataset_{object_id}.zip')
-
-        # Initialize merged_csv_name with a default value
-        merged_csv_name = None
+        temp_files = []  # List to track temporary files
 
         with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zip_file:
-            file_count = 0  # Count how many files are successfully added
-            merged_files_list = []  # Track merged files
-
-            # List of DataFrames for column-wise merging
+            file_count = 0
+            merged_files_list = []
             dataframes = []
 
-            # Iterate through file paths and process CSVs
-            for relative_path in file_paths:
-                # Ensure correct relative path construction
-                relative_path_corrected = relative_path.strip().lstrip('/')
-
-                # Construct full file path with BASE_FILE_PATH
-                full_file_path = os.path.join(BASE_FILE_PATH, relative_path_corrected)
-
-                # Debugging: Print full file path to log
-                print(f"Checking file at path: {full_file_path}")
-
+            # Add files to ZIP
+            for full_file_path in file_paths:
                 if os.path.exists(full_file_path):
-                    # If the file is a CSV, merge its contents by columns
-                    if full_file_path.endswith('.csv'):
-                        df = pd.read_csv(full_file_path)  # Read CSV into a DataFrame
-                        dataframes.append(df)  # Append DataFrame to the list for later merging
-
-                        # Track the file name for the description
-                        merged_files_list.append(os.path.basename(full_file_path))
-
-                    # Add the original file to the ZIP archive
                     zip_file.write(full_file_path, os.path.basename(full_file_path))
                     file_count += 1
-                else:
-                    print(f"File not found at path: {full_file_path}")
 
-            # Check if any files were added to the zip
-            if file_count == 0:
-                return JsonResponse({'error': 'No valid files were found to include in the dataset.', 'checked_paths': file_paths}, status=404)
+                    # Merge CSVs
+                    if full_file_path.endswith('.csv'):
+                        df = pd.read_csv(full_file_path)
+                        dataframes.append(df)
+                        merged_files_list.append(os.path.basename(full_file_path))
 
-            # Merge all DataFrames column-wise
+            # Merge all DataFrames column-wise if CSVs exist
             if dataframes:
-                merged_df = pd.concat(dataframes, axis=1)  # Merge by columns
-
-                # Save the merged CSV
                 merged_csv_name = f'merged_dataset_{object_id}.csv'
                 merged_csv_path = os.path.join(BASE_FILE_PATH, merged_csv_name)
+                merged_df = pd.concat(dataframes, axis=1)
                 merged_df.to_csv(merged_csv_path, index=False)
-
-                # Add the merged CSV to the ZIP archive
                 zip_file.write(merged_csv_path, merged_csv_name)
+                temp_files.append(merged_csv_path)
 
-            # Add the description as a text file to the ZIP archive
+            # Create dataset description file
             description_file_name = f'description_{object_id}.txt'
             description_file_path = os.path.join(BASE_FILE_PATH, description_file_name)
-
-            # Prepare description content
-            description_content = (
-                f"Files in the folder:\n"
-            )
-
-            # List original files
-            for full_file_path in file_paths:
-                description_content += f"- {os.path.basename(full_file_path)}\n"
-
-            # List merged files
-            if merged_files_list:
-                description_content += "\nMerged CSV files:\n"
-                for file in merged_files_list:
-                    description_content += f"- {file}\n"
-
-            # Add the merged CSV to the description if it exists
-            if merged_csv_name:
-                description_content += f"\nMerged CSV file: {merged_csv_name}\n"
-
-            # Write the description content to the text file
-            with open(description_file_path, 'w') as description_file:
-                description_file.write(description_content)
-
-            # Add the description text file to the ZIP
+            with open(description_file_path, 'w') as desc_file:
+                desc_file.write("Dataset Files:\n" + "\n".join(f"- {os.path.basename(p)}" for p in file_paths))
             zip_file.write(description_file_path, description_file_name)
+            temp_files.append(description_file_path)
 
-            # Create the JSON file with typename to file mapping
+            # Create JSON file with typename mapping
             json_file_name = f'typename_mapping_{object_id}.json'
             json_file_path = os.path.join(BASE_FILE_PATH, json_file_name)
-
             with open(json_file_path, 'w') as json_file:
                 json.dump(typename_file_mapping, json_file, indent=4)
-
-            # Add the JSON file to the ZIP archive
             zip_file.write(json_file_path, json_file_name)
+            temp_files.append(json_file_path)
 
-        # Send the created zip file as a response
-        response = FileResponse(open(zip_file_path, 'rb'), content_type='application/zip')
+        # If no files were added, return an error
+        if file_count == 0:
+            return JsonResponse({'error': 'No valid files found for the dataset.'}, status=404)
+
+        # ✅ **Use a temporary file handle to ensure closure before deletion**
+        zip_file_handle = open(zip_file_path, 'rb')
+
+        # Serve the ZIP file
+        response = FileResponse(zip_file_handle, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="dataset_{object_id}.zip"'
+
+        # ✅ **Schedule delayed cleanup (ensuring file release)**
+        cleanup_thread = threading.Thread(target=delete_files_with_delay, args=([zip_file_path] + temp_files,))
+        cleanup_thread.start()
 
         return response
 
@@ -1103,6 +1176,19 @@ def download_dataset(request, object_id):
         print(f"Error: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
+
+def delete_files_with_delay(files, delay=20):
+    """
+    Deletes all temporary files after a delay, ensuring no file lock issues.
+    """
+    time.sleep(delay)  # Wait for the OS to release the file lock
+    for file in files:
+        try:
+            if os.path.exists(file):
+                os.remove(file)
+                #print(f" Deleted: {file}")
+        except Exception as e:
+            print(f" Warning: Could not delete {file} - {e}")
 
 
 # Define the workflow stages and their associated object types
@@ -1345,36 +1431,35 @@ def get_sample_associated_data(request):
     })
 
 
-
 @csrf_exempt
 def download_multiple_datasets(request):
     try:
-        # Ensure this is a POST request and contains the required 'objectids' data
+        # Ensure this is a POST request
         if request.method != 'POST':
             return JsonResponse({'error': 'Invalid request method. POST required.'}, status=400)
 
-        # Parse the JSON body from the request
+        # Parse JSON request body
         data = json.loads(request.body)
         object_ids_list = data.get('objectids', [])
 
         if not object_ids_list:
             return JsonResponse({'error': 'No object IDs provided.'}, status=400)
 
-        print(f"Received object IDs: {object_ids_list}")
+        #print(f"Received object IDs: {object_ids_list}")
 
-        file_paths = set()  # Use a set to ensure each file is added only once
+        file_paths = set()  # Use a set to ensure uniqueness
         all_objects = []
 
         # Retrieve files for each object ID
         for object_id in object_ids_list:
             try:
                 obj = Objectinfo.objects.get(objectid=object_id)
-                print(f"Processing object: {obj.objectname}")
+                #print(f"Processing object: {obj.objectname}")
 
                 associated_objects = Objectlinkobject.objects.filter(objectid=obj.objectid).select_related('linkedobjectid')
                 reverse_referenced_objects = Objectlinkobject.objects.filter(linkedobjectid=obj.objectid).select_related('objectid')
 
-                # Combine all relevant objects (main object + associated objects)
+                # Combine main object + associated objects
                 all_objects.extend([obj] + [o.linkedobjectid for o in associated_objects] + [o.objectid for o in reverse_referenced_objects])
 
             except Objectinfo.DoesNotExist:
@@ -1383,11 +1468,11 @@ def download_multiple_datasets(request):
         # Collect file paths from all relevant objects
         for o in all_objects:
             if o.objectfilepath and o.objectfilepath.lower() != 'null':
-                file_paths.add(o.objectfilepath.strip().lstrip('/'))  # Add to set, ensuring uniqueness
+                file_paths.add(o.objectfilepath.strip().lstrip('/'))  # Add to set (ensuring uniqueness)
 
-        print(f"Unique file paths collected: {file_paths}")
+        #print(f"Unique file paths collected: {file_paths}")
 
-        # If no files were found, return a response indicating no files available for download
+        # If no files were found, return a response indicating no files available
         if not file_paths:
             return JsonResponse({'message': 'No files available for download for the selected object IDs.'}, status=200)
 
@@ -1395,12 +1480,12 @@ def download_multiple_datasets(request):
         zip_file_path = os.path.join(BASE_FILE_PATH, 'selected_datasets.zip')
 
         with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zip_file:
-            file_count = 0  # Count how many files were added
+            file_count = 0  # Track how many files were added
 
             for relative_path in file_paths:
                 full_file_path = os.path.join(BASE_FILE_PATH, relative_path)
 
-                print(f"Checking file at path: {full_file_path}")
+                #print(f"Checking file at path: {full_file_path}")
 
                 if os.path.exists(full_file_path):
                     zip_file.write(full_file_path, os.path.basename(full_file_path))
@@ -1409,17 +1494,35 @@ def download_multiple_datasets(request):
                     print(f"File not found at path: {full_file_path}")
 
             if file_count == 0:
-                return JsonResponse({'error': 'No valid files were found to include in the dataset.'}, status=404)
+                return JsonResponse({'error': 'No valid files found to include in the dataset.'}, status=404)
 
-        print(f"ZIP file created: {zip_file_path}")
+        #print(f"# ZIP file created: {zip_file_path}")
+
+        # **Ensure the ZIP file is closed before deletion**
+        zip_file_handle = open(zip_file_path, 'rb')
 
         # Send the created ZIP file as a response
-        response = FileResponse(open(zip_file_path, 'rb'), content_type='application/zip')
+        response = FileResponse(zip_file_handle, content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename="selected_datasets.zip"'
+
+        #  **Schedule deletion after response is fully sent**
+        cleanup_thread = threading.Thread(target=delete_zip_file_after_delay, args=(zip_file_path,))
+        cleanup_thread.start()
 
         return response
 
     except Exception as e:
         print(f"Error: {str(e)}")  
         return JsonResponse({'error': str(e)}, status=500)
-    
+
+def delete_zip_file_after_delay(zip_file_path, delay=10):
+    """
+    Deletes the ZIP file after a delay to ensure the file is fully sent before deletion.
+    """
+    time.sleep(delay)  # Wait to avoid file lock issues
+    try:
+        if os.path.exists(zip_file_path):
+            os.remove(zip_file_path)
+            #print(f"Deleted: {zip_file_path}")
+    except Exception as e:
+        print(f"Warning: Could not delete {zip_file_path} - {e}")

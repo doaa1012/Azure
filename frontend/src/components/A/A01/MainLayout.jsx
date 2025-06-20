@@ -1,12 +1,15 @@
 import { Outlet, Link } from "react-router-dom";
 import { useState } from "react";
 import Navbar from './NavBar';
+import ChatbotComponent from "../../ChatbotComponent";
 import logo from '../../images/crc1625logo200.png';
 
 const MainLayout = () => {
   const [isAreaACollapsed, setIsAreaACollapsed] = useState(true);
   const [isAreaBCollapsed, setIsAreaBCollapsed] = useState(true);
   const [isAreaCCollapsed, setIsAreaCCollapsed] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
 
   const toggleAreaA = (e) => {
     e.preventDefault();
@@ -22,11 +25,59 @@ const MainLayout = () => {
     e.preventDefault();
     setIsAreaCCollapsed(!isAreaCCollapsed);
   };
+  const handleAddContainer = async () => {
+    const token = localStorage.getItem('token');
+    const newRubric = {
+      name: "INF",
+      rubric_name: "INF",
+      tenant_id: 4,
+      access_control: "public"
+    };
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/create_rubric/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(newRubric)
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Container '${newRubric.name}' created successfully!`);
+        // optionally reload or update the sidebar
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to create rubric:", error);
+      alert("An error occurred while creating the container.");
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      <button
+        className="absolute top-4 left-4 z-50 md:hidden bg-blue-600 text-white p-2 rounded-md"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+      >
+        {sidebarOpen ? "✖" : "☰"}
+      </button>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black opacity-50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 text-gray-800 bg-white shadow-lg p-6">
+      <aside
+        className={`fixed z-40 top-0 left-0 h-full w-64 bg-white shadow-lg p-6 overflow-y-auto transform transition-transform duration-300
+      ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}
+      >
         <nav className="flex-grow">
           <ul className="space-y-6">
             {/* Area A */}
@@ -212,8 +263,28 @@ const MainLayout = () => {
                 INF
               </Link>
             </li>
+            <li>
+            <Link
+                to="/general/recycle bin"
+                className="p-3 rounded-lg block text-black bg-amber-200 hover:bg-amber-300 transition-colors"
+              >
+                Recycle Bin
+              </Link>
+
+
+            </li>
           </ul>
         </nav>
+
+        <br />
+
+        <Link to={`/create/new_container/${'root'}`}>
+          <button className="flex items-center justify-center gap-2 p-3 w-full text-gray-800 bg-green-200 hover:bg-green-300 rounded-lg transition-colors">
+            <span className="text-lg">＋</span> <span>Add Container</span>
+          </button>
+        </Link>
+        <br />
+
         <br />
         <div className="mb-6">
           <img src={logo} alt="CRC 1625 Logo" className="w-full h-auto" />
@@ -229,6 +300,7 @@ const MainLayout = () => {
         <main className="flex-1 bg-white p-10 shadow-md rounded-lg">
           <Outlet />
         </main>
+        <ChatbotComponent />
       </div>
     </div>
   );

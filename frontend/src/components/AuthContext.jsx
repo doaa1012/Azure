@@ -31,11 +31,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, role }}>
-      {children}
-    </AuthContext.Provider>
-  );
+ return (
+  <AuthContext.Provider value={{ 
+    isAuthenticated, 
+    setIsAuthenticated, 
+    login, 
+    logout, 
+    role 
+  }}>
+    {children}
+  </AuthContext.Provider>
+);
+
 };
 
 // Hook to use the Auth context

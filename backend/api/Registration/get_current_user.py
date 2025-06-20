@@ -16,8 +16,11 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.hashers import check_password, make_password
 import requests
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from ..models import Aspnetusers, Aspnetuserlogins, Aspnetusertokens, Aspnetuserroles, Aspnetroles, Objectinfo
 
 def verify_password(plain_password, hashed_password):
     api_url = 'http://localhost:5046/api/passwordhash/verify'
@@ -351,3 +354,28 @@ def delete_account(request):
         except Aspnetusers.DoesNotExist:
             return JsonResponse({'error': 'User not found.'}, status=404)
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
+
+
+from django.http import JsonResponse
+@csrf_exempt
+def objects_by_user(request, user_id):
+    user = get_object_or_404(Aspnetusers, id=user_id)
+
+    objects = Objectinfo.objects.filter(field_createdby_id=user_id).order_by('-field_created')
+
+    data = [
+        {
+            "ObjectID": obj.objectid,
+            "ObjectName": obj.objectname,
+            "ObjectType": obj.typeid.typename if obj.typeid else None,
+            "Created": obj.field_created.strftime('%Y-%m-%d %H:%M:%S') if obj.field_created else None,
+            "RubricID": obj.rubricid.rubricid if obj.rubricid else None,
+            "RubricName": obj.rubricid.rubricname if obj.rubricid else None,  # <-- safe extraction
+            "AccessControl": obj.accesscontrol,
+            "ObjectFilePath": obj.objectfilepath,
+            "ObjectURL": obj.objectnameurl,
+        }
+        for obj in objects
+    ]
+
+    return JsonResponse(data, safe=False)

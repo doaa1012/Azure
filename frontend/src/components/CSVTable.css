@@ -1,0 +1,51 @@
+.csv-table-container {
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.csv-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.csv-table th {
+    background-color: #4A90E2;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+}
+
+.csv-table td {
+    padding: 10px;
+    border-bottom: 1px solid #6dbaf6;
+}
+
+.csv-table tbody tr:nth-child(even) {
+    background-color: #b3daf8;
+}
+
+.csv-table tbody tr:hover {
+    background-color: #79b4f8;
+    transition: 0.2s ease-in-out;
+}
+
+.highlight {
+    background-color: #FFD700 !important;
+    font-weight: bold;
+    color: black !important;
+}
+.wafer-plot-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.wafer-plot {
+    max-width: 100%;
+    height: auto;
+}
