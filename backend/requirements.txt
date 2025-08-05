@@ -53,9 +53,6 @@ requests
 plotly
 dash
 pydeck
-streamlit
-imageio
-opencv-python
 
 # Utilities and misc
 tqdm
@@ -83,6 +80,7 @@ hf-xet
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
 django-cors-headers==3.14.0
+
 
 
 
