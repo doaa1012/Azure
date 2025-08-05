@@ -21,7 +21,6 @@ maggma
 autoxrd
 pyxtal
 phonopy
-phononwebsite
 pylada
 pyxtal
 
@@ -81,6 +80,7 @@ blosc2
 blis
 thinc
 hf-xet
+
 
 
 
