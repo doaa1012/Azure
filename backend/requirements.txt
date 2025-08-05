@@ -7,12 +7,6 @@ pandas>=1.5
 autoxrd
 
 
-# NLP / LLM-related
-sentence-transformers>=2.7.0
-cohere>=4.52
-chromadb>=0.5.0
-# --- PDF Parsing ---
-PyMuPDF>=1.23.25
 
 
 # Web and API
@@ -30,6 +24,7 @@ requests
 tqdm
 pydoe2
 nptdms
+
 
 
 
