@@ -7,7 +7,7 @@ name: Build and deploy Python app to Azure Web App - mydjangoapp123
 on:
   push:
     branches:
-      - main/backend
+      - main
   workflow_dispatch:
 
 jobs:
@@ -68,6 +68,8 @@ jobs:
         with:
           app-name: 'mydjangoapp123'
           slot-name: 'Production'
+           package: backend
 
           
+
 
