@@ -2,7 +2,6 @@
 numpy>=1.25,<2.0
 scipy>=1.6.0,<1.14.0
 pandas>=1.5
-matplotlib
 seaborn
 
 
@@ -11,11 +10,9 @@ ase>=3.25.0
 maggma
 autoxrd
 pyxtal
-cohere
 
 
 # NLP / LLM-related
-langchain
 sentence-transformers>=2.7.0
 cohere>=4.52
 chromadb>=0.5.0
@@ -40,12 +37,12 @@ fastapi
 uvicorn
 django
 djangorestframework
+djangorestframework-simplejwt==5.2.2
+django-cors-headers==3.14.0
 httpx
 aiohttp
 requests
 
-# Visualization and plotting
-plotly
 
 
 # Utilities and misc
@@ -61,17 +58,7 @@ pyts
 paramz
 
 
-# Optional or specific use cases
-captum
-ml-dtypes
-onnxruntime
-blosc2
-blis
-thinc
-hf-xet
 
-djangorestframework-simplejwt==5.2.2
-django-cors-headers==3.14.0
 
 
 
