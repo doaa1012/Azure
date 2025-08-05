@@ -63,7 +63,6 @@ paramz
 
 # Optional or specific use cases
 captum
-keras
 ml-dtypes
 onnxruntime
 blosc2
@@ -71,9 +70,9 @@ blis
 thinc
 hf-xet
 
-djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
 django-cors-headers==3.14.0
+
 
 
 
