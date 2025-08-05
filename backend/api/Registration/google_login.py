@@ -120,7 +120,7 @@ def google_auth_callback(request):
         except Aspnetroles.DoesNotExist:
             print("Role with ID 2 does not exist")
 
-        print("✅ New user registered:", user.email)
+        print(" New user registered:", user.email)
 
     # Step 7: Get role
     user_role = Aspnetuserroles.objects.filter(userid=user).first()

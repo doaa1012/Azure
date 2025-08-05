@@ -1,5 +1,4 @@
 from django.http import JsonResponse
-from ..models import Aspnetusers
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
@@ -356,7 +355,7 @@ def delete_account(request):
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
 
-from django.http import JsonResponse
+
 @csrf_exempt
 def objects_by_user(request, user_id):
     user = get_object_or_404(Aspnetusers, id=user_id)
@@ -367,7 +366,7 @@ def objects_by_user(request, user_id):
         {
             "ObjectID": obj.objectid,
             "ObjectName": obj.objectname,
-            "ObjectType": obj.typeid.typename if obj.typeid else None,
+            "TypeName": obj.typeid.typename if obj.typeid else None,
             "Created": obj.field_created.strftime('%Y-%m-%d %H:%M:%S') if obj.field_created else None,
             "RubricID": obj.rubricid.rubricid if obj.rubricid else None,
             "RubricName": obj.rubricid.rubricname if obj.rubricid else None,  # <-- safe extraction

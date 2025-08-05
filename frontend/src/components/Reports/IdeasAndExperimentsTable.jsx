@@ -2,80 +2,95 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import config from '../../config_path';
+
 const IdeasAndExperimentsTable = () => {
   const [ideas, setIdeas] = useState([]);
 
   useEffect(() => {
-    // Fetch data from the backend
     axios.get(`${config.BASE_URL}api/ideas-experiments/`)
-      .then(response => {
-        setIdeas(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching data:', error);
-      });
+      .then(response => setIdeas(response.data))
+      .catch(error => console.error('Error fetching data:', error));
   }, []);
 
   return (
-    <div>
-      <div style={{ padding: '30px' }}></div>
+    <div className="w-full max-w-screen-xl mx-auto px-4 sm:px-6 md:px-10 bg-blue-50 min-h-screen font-sans overflow-hidden">
+      <div className="max-w-5xl mx-auto">
+      <header className="bg-blue-800 text-white rounded-2xl shadow-lg py-4 mb-8 mt-6 flex items-center justify-center min-h-[60px]">
+      <h1 className="text-xl font-semibold tracking-tight">Ideas and Experiment Plans</h1>
+    </header>
 
-      <header style={{
-        backgroundColor: '#0047AB',  // Blue header background
-        color: 'white',
-        padding: '20px',
-        textAlign: 'center',
-        marginBottom: '20px',
-        borderRadius: '8px',
-        fontSize: '32px'  
-        
-      }}>
-        <h1>Ideas and Experiment Plans</h1>
-      </header>
 
-      <p style={{ marginBottom: '20px' }}>
-        Green are ideas/plans associated with at least one sample (i.e. "verified" or "completed" ideas/plans). Red ideas/plans require attention and upcoming sample synthesis (i.e. "pending" or "open" ideas/plans).
-      </p>
+        <p className="mb-6 text-gray-700 text-center text-base">
+          <span className="text-green-700 font-semibold">Green badge</span> = completed &nbsp;|&nbsp;
+          <span className="text-red-700 font-semibold">Red badge</span> = pending/open
+        </p>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#007bff', color: 'white', textAlign: 'left' }}>
-            <th style={{ padding: '12px', textAlign: 'center' }}>Date</th>
-            <th style={{ padding: '12px', textAlign: 'center' }}>Name / Description</th>
-            <th style={{ padding: '12px', textAlign: 'center' }}>Created by</th>
-            <th style={{ padding: '12px', textAlign: 'center' }}>Samples Synthesised</th>
-          </tr>
-        </thead>
-        <tbody>
+        {/* Table header */}
+        <div className="grid grid-cols-4 bg-gray-100 rounded-lg font-semibold text-gray-700 text-center py-4 mb-2 shadow">
+          <div>Date</div>
+          <div>Name / Description</div>
+          <div>Created by</div>
+          <div>Samples</div>
+        </div>
+
+        {/* Card rows */}
+        <div className="flex flex-col gap-4">
           {ideas.map((idea) => (
-            <tr
+            <div
               key={idea.object_id}
-              style={{
-                backgroundColor: idea.sample_count > 0 ? '#d4edda' : '#f8d7da', // Green if samples exist, Red otherwise
-                transition: 'background-color 0.3s ease',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = idea.sample_count > 0 ? '#66bb6a' : '#ef9a9a'}  // Slightly darker hover
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idea.sample_count > 0 ? '#d4edda' : '#f8d7da'}  // Reset color after hover
+              className={`
+                grid grid-cols-4 bg-white rounded-xl shadow group 
+                transition-all duration-200 border-l-4
+                ${idea.sample_count > 0 
+                  ? 'border-green-400 hover:shadow-lg' 
+                  : 'border-red-400 hover:shadow-lg'
+                }
+                items-start py-6
+              `}
             >
-              <td style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ddd' }}>{idea.date_created}</td>
+              {/* Date + status badge */}
+              <div className="flex flex-col items-center justify-center px-2">
+                <span className="font-semibold text-blue-900 text-sm">{idea.date_created}</span>
+                <span className={`
+                  mt-2 px-3 py-0.5 rounded-full text-xs font-bold
+                  ${idea.sample_count > 0 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-red-100 text-red-600'
+                  }
+                `}>
+                  {idea.sample_count > 0 ? 'Completed' : 'Pending'}
+                </span>
+              </div>
 
-              {/* Separate the clickable name from the description */}
-              <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-                <Link to={`/object/${idea.object_id}`} style={{ color: '#007bff', textDecoration: 'none' }}>
+              {/* Name/description */}
+              <div className="px-2">
+                <Link
+                  to={`/object/${idea.object_id}`}
+                  className="text-blue-700 font-semibold hover:underline text-base"
+                >
                   {idea.object_name}
                 </Link>
-                <span style={{ display: 'block', marginTop: '5px', color: '#6c757d' }}>
+                <div
+                  className="mt-1 text-gray-600 text-sm font-normal line-clamp-2"
+                  title={idea.description}
+                >
                   {idea.description}
-                </span>
-              </td>
+                </div>
+              </div>
 
-              <td style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ddd' }}>{idea.created_by}</td>
-              <td style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ddd' }}>{idea.sample_count}</td>
-            </tr>
+              {/* Created by */}
+              <div className="text-center px-2 truncate text-gray-700 text-sm" title={idea.created_by}>
+                {idea.created_by.length > 25 ? idea.created_by.slice(0, 23) + '…' : idea.created_by}
+              </div>
+
+              {/* Samples Synthesised */}
+              <div className="text-center font-bold text-lg text-gray-800 px-2">
+                {idea.sample_count}
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 };

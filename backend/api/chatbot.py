@@ -197,6 +197,11 @@ def chatbot_cohere_view(request):
             )
 
             return JsonResponse({"response": response.text})
+        elif chat_mode == "rag":
+            return JsonResponse({
+                "redirect": True,
+                "url": "/rag"  # ✅ This is the React route to navigate to
+            })
 
         # **3️⃣ Default Response (FAQ)**
         return JsonResponse({"response": "🔹 This mode requires an AI response, but search is now database-driven."})

@@ -17,7 +17,10 @@ import IdeasAndExperimentsMeasurement from './IdeasAndExperimentsMeasurement';
 import LsvsViewer from './LsvsViewer';
 import SplitSample from "./SplitSample";
 import config from '../../../config_path';
-import { FaEdit, FaTrash, FaPlus  } from 'react-icons/fa';
+import { useTour } from '../../Tour/TourProvider';
+import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import jwtDecode from 'jwt-decode';
 function ObjectDetail() {
@@ -41,6 +44,87 @@ function ObjectDetail() {
   const isIdeasOrExperiment = objectData?.Type?.TypeName?.toLowerCase() === 'ideas or experiment plans';
   const [showCsvTable, setShowCsvTable] = useState(false);
   const [lsvSuccessMessage, setLsvSuccessMessage] = useState(null);
+  const { startTour } = useTour();
+  const [runTour, setRunTour] = useState(false);
+
+  const waitForElements = (selectors, maxRetries = 10, delay = 300) => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const check = () => {
+        const missing = selectors.filter(sel => !document.querySelector(sel));
+        if (missing.length === 0) {
+          resolve();
+        } else if (attempts < maxRetries) {
+          attempts++;
+          setTimeout(check, delay);
+        } else {
+          reject(`Elements not found: ${missing.join(', ')}`);
+        }
+      };
+      check();
+    });
+  };
+  const handleStartTour = (data) => {
+    const objectType = data?.type?.Typename || '';
+
+    const lsvTypes = [
+      'SECCM (csv)',
+      'SECCM Long-range Processed (csv)',
+      'SECCM Long-range Raw (zip)',
+      'SECCM/EBSD correlation (xlsx)',
+    ];
+
+    const allSelectors = [
+      { selector: '.object-detail-title', step: 'This is the main object name.' },
+      { selector: '.object-detail-info', step: 'Basic metadata and download links.' },
+      { selector: '.property-table-container', step: 'All properties of the object are shown here.' },
+      { selector: '.associated-section', step: 'Objects that are linked to this object appear here.' },
+      { selector: '.referenced-title', step: 'These objects reference the current one.' },
+      { selector: '.object-detail-buttons', step: 'Main action buttons: Edit, Upload, Link, etc.' },
+    ];
+
+    if (objectType === 'Sample') {
+      allSelectors.push({
+        selector: '.sample-section-container',
+        step: 'This section is specific to Sample-type objects.',
+      });
+    }
+
+    if (lsvTypes.includes(objectType)) {
+      allSelectors.push({
+        selector: '.lsvs-input-section',
+        step: 'This area allows you to analyze LSV data.',
+      });
+    }
+
+    const hasIdeasData = data?.AssociatedObjects?.length > 0;
+    if ((objectType.includes('Idea') || objectType.includes('Experiment')) && hasIdeasData) {
+      allSelectors.push({
+        selector: '.ideas-experiments-measurements-section1',
+        step: 'Track your ideas, experiments, and results here.',
+      });
+    }
+
+    // Filter for actually rendered selectors
+    const presentSteps = allSelectors.filter(({ selector }) =>
+      document.querySelector(selector)
+    );
+
+    const selectors = presentSteps.map(({ selector }) => selector);
+    const steps = presentSteps.map(({ selector, step }) => ({
+      target: selector,
+      content: step,
+    }));
+
+    waitForElements(selectors)
+      .then(() => {
+        startTour(steps);
+      })
+      .catch((error) => {
+        console.error('Error starting tour:', error);
+      });
+  };
+
 
   const navigate = useNavigate();
   useEffect(() => {
@@ -272,7 +356,7 @@ function ObjectDetail() {
 
   return (
     <div className="object-detail-container bg-blue-50 p-10 min-h-screen">
-      <h1 className="object-detail-title text-center text-4xl font-bold text-gray-800 mb-10">
+      <h1 className="object-detail-title object-detail-title text-center text-4xl font-bold text-gray-800 mb-10">
         {(objectData?.ObjectName || 'Unknown Object').toUpperCase()}
       </h1>
 
@@ -324,24 +408,37 @@ function ObjectDetail() {
             {showCsvTable && <CSVTable objectId={objectId} onClose={() => setShowCsvTable(false)} />}
           </div>
           {/* Button */}
-          <button
-            onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
-            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-md hover:from-green-600 hover:to-green-800 transition-all text-sm"
-          >
-            {showAdditionalInfo ? (
-              <>
-                <i className="fas fa-eye-slash"></i>
-                Hide Additional Info
-              </>
-            ) : (
-              <>
-                <i className="fas fa-eye"></i>
-                Show Additional Info
-              </>
-            )}
-          </button>
-        </div>
+          {/* Start Tour Button */}
+          <div className="flex flex-col items-center gap-4 mt-4">
+            {/* Start Tour Button */}
+            <button
+              onClick={() => handleStartTour(objectData)}
+              className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-500 transition-transform transform hover:scale-105 w-full md:w-auto"
+            >
+              <i className="fas fa-eye"></i>
+              <span>Start Tour</span>
+            </button>
 
+            {/* Show/Hide Additional Info Button */}
+            <button
+              onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
+              className="object-detail-info flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold py-2 px-6 rounded-md shadow-md hover:from-green-600 hover:to-green-800 transition-all w-full md:w-auto"
+            >
+              {showAdditionalInfo ? (
+                <>
+                  <i className="fas fa-eye-slash"></i>
+                  Hide Additional Info
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-eye"></i>
+                  Show Additional Info
+                </>
+              )}
+            </button>
+          </div>
+
+        </div>
         {/* Additional Info (No border on top) */}
         {showAdditionalInfo && (
           <div className="mt-4">
@@ -425,16 +522,16 @@ function ObjectDetail() {
 </DeleteHandler>
 */}
 
-             {/* Show Recycle only if not in Recycle Bin */}
-    {!objectData?.RubricPath?.toLowerCase().includes('recycle bin') && (
-      <button
-        className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 hover:bg-gray-100 px-2 py-1 rounded transition-all duration-200"
-        onClick={() => handleRecycle(objectData?.ObjectId)}
-      >
-        <FaTrash className="text-lg" />
-        <span>Recycle</span>
-      </button>
-    )}
+            {/* Show Recycle only if not in Recycle Bin */}
+            {!objectData?.RubricPath?.toLowerCase().includes('recycle bin') && (
+              <button
+                className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 hover:bg-gray-100 px-2 py-1 rounded transition-all duration-200"
+                onClick={() => handleRecycle(objectData?.ObjectId)}
+              >
+                <FaTrash className="text-lg" />
+                <span>Recycle</span>
+              </button>
+            )}
 
 
           </div>
@@ -449,7 +546,7 @@ function ObjectDetail() {
               ? 'Measurements'
               : 'Properties'}
           </h3>
-          <table className="property-table w-full border-collapse">
+          <table className="property-table-container property-table w-full border-collapse">
             <thead>
               <tr>
                 <th>Type</th>
@@ -470,29 +567,33 @@ function ObjectDetail() {
                   </td>
 
 
-                  <td className="flex gap-2">
+                  <td className="flex gap-4 justify-center">
                     {/* Edit Button */}
-                    <Link
-                      to={`/edit-property/${prop?.id}`}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      <FaEdit className="text-lg" />
-                      <span>Edit</span>
-                    </Link>
+                    <div className="flex flex-col items-center text-blue-500 hover:text-blue-700">
+                      <Link to={`/edit-property/${prop?.id}`}>
+                        <FaEdit className="text-lg" />
+                      </Link>
+                      <span className="text-sm mt-1">Edit</span>
+                    </div>
 
                     {/* Delete Button */}
-                    <DeleteProperty
-                      propertyId={prop?.id} // Pass the correct property ID
-                      propertyType={prop?.type} // Pass the property type (e.g., 'Float', 'String', etc.)
-                      apiEndpoint={`${config.BASE_URL}api/delete_property`}
-                      onDeleteComplete={(deletedId) => {
-                        const updatedProperties = objectData.Properties.filter(
-                          (property) => property.id !== deletedId
-                        );
-                        setObjectData({ ...objectData, Properties: updatedProperties });
-                      }}
-                    />
+                    <div className="flex flex-col items-center text-red-600 hover:text-red-800">
+                      <DeleteProperty
+                        propertyId={prop?.id}
+                        propertyType={prop?.type}
+                        apiEndpoint={`${config.BASE_URL}api/delete_property`}
+                        onDeleteComplete={(deletedId) => {
+                          const updatedProperties = objectData.Properties.filter(
+                            (property) => property.id !== deletedId
+                          );
+                          setObjectData({ ...objectData, Properties: updatedProperties });
+                        }}
+                      />
+
+                    </div>
                   </td>
+
+
                 </tr>
               ))}
             </tbody>
@@ -695,7 +796,7 @@ function ObjectDetail() {
           )}
         </div>
       )}
-
+      <br />
       {/* Referenced Objects */}
       {objectData?.ReferencedObjects?.length > 0 && (
         <>
@@ -728,17 +829,22 @@ function ObjectDetail() {
         </>
       )}
       {/* Render IdeasAndExperimentsMeasurement if type matches */}
+
       {isIdeasOrExperiment && objectData?.AssociatedObjects?.length > 0 && (
-        <div className="ideas-experiments-measurements-section mt-8">
+        <div className="ideas-experiments-measurements-section1 mt-8">
           <IdeasAndExperimentsMeasurement objectId={objectId} />
         </div>
       )}
+
+
+
+
       {objectData?.Type?.TypeName === 'LSV (xlsx, csv, txt)' && objectData?.FileUrl && (
         <LsvsViewer filePath={`${config.BASE_URL}${objectData.FileUrl}`} />
       )}
 
       {/* Button Section */}
-      <div className="flex flex-wrap justify-center mt-10 gap-4">
+      <div className="object-detail-buttons flex flex-wrap justify-center mt-10 gap-4">
         <button
           onClick={goToWorkflowStatus}
           className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-800 transition-transform transform hover:scale-105"

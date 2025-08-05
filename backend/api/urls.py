@@ -41,6 +41,7 @@ from .samples_reports import *
 from .user_handovers import *
 from .link_object_to_rubric import *
 from .edit_delete import recycle_object
+from .rag_views import *
 urlpatterns = [
     
     path('api/objectinfo/<str:rubricnameurl>/', views.objectinfo_list, name='objectinfo_list'),
@@ -60,7 +61,7 @@ urlpatterns = [
     path('api/get_typenames/', views.get_typenames, name='get_typenames'),
     path('api/samples-per-element/', views.get_samples_per_element_data, name='samples_per_element_data'),
     path('api/monthly-object-increase/', views.monthly_object_increase_view, name='monthly_object_increase'),
-     path('api/user-claims/', views.user_claims_view, name='user_claims'),
+    path('api/user-claims/', views.user_claims_view, name='user_claims'),
     path('api/synthesis-requests/', views.synthesis_requests_view, name='synthesis-requests'),
     path('api/users/', views.user_list_view, name='user-list'),
     path('api/users/<int:user_id>/', views.user_detail_view, name='user-detail'),
@@ -156,5 +157,6 @@ urlpatterns = [
     path('api/recycle-object/', recycle_object.recycle_object, name='recycle_object'),
     path('auth/google/', google_login.google_login_redirect, name='google_login_redirect'),
     path('api/google-auth-callback/', google_login.google_auth_callback, name='google_auth_callback'),
+    path("api/rag_query/", rag_query_view, name='rag_query_view'),
 
 ]

@@ -7,7 +7,7 @@ const UserActivities = () => {
   const [userObjects, setUserObjects] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [showObjects, setShowObjects] = useState(false); // toggle state
-
+  const [openSections, setOpenSections] = useState({});
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -49,29 +49,62 @@ const UserActivities = () => {
       </button>
 
       {/* Collapsible List */}
-      {showObjects && (
-        <>
-          {userObjects.length === 0 ? (
-            <p className="text-gray-600">You haven't created any objects yet.</p>
-          ) : (
-            <ul className="space-y-4">
-              {userObjects.map((obj) => (
-                <li key={obj.ObjectID} className="bg-white p-4 rounded shadow border-l-4 border-blue-500">
-                  <Link
-                    to={`/object/${obj.ObjectID}`}
-                    className="text-blue-700 font-semibold text-lg hover:underline"
+    {showObjects && (
+  <>
+    {userObjects.length === 0 ? (
+      <p className="text-gray-600">You haven't created any objects yet.</p>
+    ) : (
+      Object.entries(
+        userObjects.reduce((acc, obj) => {
+          const type = obj.TypeName || 'Unknown Type';
+          if (!acc[type]) acc[type] = [];
+          acc[type].push(obj);
+          return acc;
+        }, {})
+      ).map(([type, objs], index) => {
+        const isOpen = openSections[type] ?? false; // default open
+        return (
+          <div key={type} className="mb-4 border rounded shadow bg-white">
+            <button
+              onClick={() =>
+                setOpenSections((prev) => ({
+                  ...prev,
+                  [type]: !prev[type],
+                }))
+              }
+              className="w-full flex justify-between items-center px-4 py-2 bg-blue-100 text-left text-blue-800 font-semibold hover:bg-blue-200"
+            >
+              <span>{type}</span>
+              <span>{isOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {isOpen && (
+              <ul className="space-y-2 p-4 pt-2">
+                {objs.map((obj) => (
+                  <li
+                    key={obj.ObjectID}
+                    className="border-l-4 border-blue-500 pl-3"
                   >
-                    {obj.ObjectName || `Unnamed Object (ID: ${obj.ObjectID})`}
-                  </Link>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Type: {obj.TypeName || 'N/A'} | Created: {obj.Created || 'Unknown'}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+                    <Link
+                      to={`/object/${obj.ObjectID}`}
+                      className="text-blue-700 font-semibold text-lg hover:underline"
+                    >
+                      {obj.ObjectName || `Unnamed Object (ID: ${obj.ObjectID})`}
+                    </Link>
+                    <div className="text-sm text-gray-600">
+                      Created: {obj.Created || 'Unknown'}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })
+    )}
+  </>
+)}
+
 
       <div className="mt-8">
         <Link to="/list-of-objects">

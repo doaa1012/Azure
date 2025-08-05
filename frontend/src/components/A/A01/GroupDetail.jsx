@@ -7,6 +7,7 @@ import DeleteHandler from '../../edit_delete/DeleteHandler';
 import config from '../../../config_path';
 import EditRubricButton from '../../edit_delete/EditRubricButton';
 import DeleteRubricButton from '../../edit_delete/DeleteRubricButton';
+import { useTour } from '../../Tour/TourProvider';
 
 function GroupDetail() {
   const { RubricNameUrl } = useParams();
@@ -19,6 +20,87 @@ function GroupDetail() {
   const [rubricName, setRubricName] = useState('');
   const [subcontainers, setSubcontainers] = useState([]);
   const [subcontainersOpen, setSubcontainersOpen] = useState(false);
+  const { startTour } = useTour();
+
+const waitForElements = (selectors, maxRetries = 10, delay = 300) => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const check = () => {
+      const missing = selectors.filter(sel => !document.querySelector(sel));
+      if (missing.length === 0) {
+        resolve();
+      } else if (attempts < maxRetries) {
+        attempts++;
+        setTimeout(check, delay);
+      } else {
+        reject(`Elements not found: ${missing.join(', ')}`);
+      }
+    };
+    check();
+  });
+};
+
+const handleStartTour = () => {
+  // Expand all collapsed sections before waiting for elements
+  const expandAllSections = () => {
+    const toggles = document.querySelectorAll('[data-expand-toggle]');
+    toggles.forEach(btn => {
+      const sectionId = btn.getAttribute('data-expand-toggle');
+      const section = document.getElementById(sectionId);
+      if (section && section.classList.contains('hidden')) {
+        btn.click(); // Simulate click to expand
+      }
+    });
+  };
+
+  expandAllSections(); // Call this first
+
+  const allTargets = [
+    '.toggle-user-items-button',
+    '.subcontainer-section',
+    //'.category-section',
+    '.btn-create-subcontainer',
+    '.btn-create-object',
+    '.btn-add-sample',
+    '.btn-upload-files'
+  ];
+
+  waitForElements(allTargets).then(() => {
+    const steps = [
+      {
+        target: '.toggle-user-items-button',
+        content: 'Toggle between showing only your items or all items in this rubric.',
+      },
+      {
+        target: '.subcontainer-section',
+        content: 'These are subcontainers organized under the current rubric.',
+      },
+      //{
+       // target: '.category-section',
+        //content: 'Each section represents a type of object or dataset.',
+     // },
+      {
+        target: '.btn-create-subcontainer',
+        content: 'Use this to create a new subcontainer within this rubric.',
+      },
+      {
+        target: '.btn-create-object',
+        content: 'Click here to create a new object type in this rubric.',
+      },
+      {
+        target: '.btn-add-sample',
+        content: 'Use this to add a new sample to the rubric.',
+      },
+      {
+        target: '.btn-upload-files',
+        content: 'Upload files directly to this rubric.',
+      }
+    ];
+    startTour(steps);
+  }).catch(error => {
+    console.warn("Tour could not start:", error);
+  });
+};
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -141,17 +223,29 @@ function GroupDetail() {
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-10 capitalize">
         {rubricName ? rubricName.toUpperCase() : RubricNameUrl.replace(/-/g, ' ').toUpperCase()} DETAILS
       </h1>
+<div className="flex flex-wrap gap-4 mb-5">
+  <button
+    onClick={() => setShowUserItemsOnly(!showUserItemsOnly)}
+    className={`toggle-user-items-button toggle-user-items-button flex items-center gap-2 px-5 py-2 rounded-lg transition ${
+      showUserItemsOnly ? 'bg-red-600 text-white' : 'bg-purple-600 text-white hover:bg-purple-500'
+    }`}
+  >
+    {showUserItemsOnly ? <FaEyeSlash /> : <FaEye />}
+    <span>{showUserItemsOnly ? 'Show All Items' : 'Show My Items'}</span>
+  </button>
 
-      <button
-        onClick={() => setShowUserItemsOnly(!showUserItemsOnly)}
-        className={`flex items-center gap-2 px-5 py-2 rounded-lg transition mb-5 ${showUserItemsOnly ? 'bg-red-600 text-white' : 'bg-purple-600 text-white hover:bg-purple-500'}`}
-      >
-        {showUserItemsOnly ? <FaEyeSlash /> : <FaEye />}
-        <span>{showUserItemsOnly ? 'Show All Items' : 'Show My Items'}</span>
-      </button>
+  <button
+    onClick={handleStartTour}
+    className="flex items-center gap-2 px-5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition"
+  >
+    <FaEye className="text-xl" />
+    <span>Start Tour</span>
+  </button>
+</div>
+
 
       {subcontainers.length > 0 && (
-        <div className="mt-10 mb-8">
+        <div className="subcontainer-section mt-10 mb-8">
           <div
             onClick={() => setSubcontainersOpen(prev => !prev)}
             className="flex justify-between items-center bg-blue-200 px-5 py-3 rounded-lg shadow cursor-pointer hover:bg-blue-300"
@@ -199,10 +293,11 @@ function GroupDetail() {
       )}
 
       {Object.keys(groupedData).length === 0 && subcontainers.length === 0 ? (
-        <p className="text-center text-lg text-gray-500 mt-8">No data available for this group.</p>
+        <p className="text-center text-lg text-gray-500 mt-8 category-section">No data available for this group.</p>
       ) : (
         Object.keys(groupedData).map((typeName, indexType) => (
           <div key={`${typeName}-${indexType}`} className="mb-6">
+
             <h2
               onClick={() => toggleSection(typeName)}
               className="flex justify-between items-center p-4 text-lg font-semibold text-blue-600 bg-blue-100 rounded-lg cursor-pointer hover:bg-blue-200"
@@ -340,7 +435,7 @@ function GroupDetail() {
       {/* Buttons for category creation */}
       <div className="flex flex-wrap justify-center gap-4 mt-10">
         <Link to={`/create/new_container/${encodeURIComponent(RubricNameUrl)}`} className="no-underline">
-          <button className="flex items-center gap-2 bg-pink-600 text-white px-5 py-2 rounded-lg shadow hover:bg-pink-500 transition">
+          <button className="btn-create-subcontainer flex items-center gap-2 bg-pink-600 text-white px-5 py-2 rounded-lg shadow hover:bg-pink-500 transition">
             <FaFolderPlus className="text-xl" />
             <span>Create a New Subcontainer</span>
           </button>
@@ -348,14 +443,14 @@ function GroupDetail() {
 
 
         <Link to={`/list-of-objects/${RubricNameUrl}`} className="no-underline">
-          <button className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-500">
+          <button className="btn-create-object flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-500">
             <FaBoxOpen className="text-xl" />
             <span>Create a New Object Type</span>
           </button>
         </Link>
 
         <Link to={`/create/sample?rubricnameurl=${encodeURIComponent(RubricNameUrl)}`} className="no-underline">
-          <button className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-lg shadow hover:bg-orange-400">
+          <button className="btn-add-sample flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-lg shadow hover:bg-orange-400">
             <FaPlus className="text-xl" />
             <span>Add Sample</span>
           </button>
@@ -363,7 +458,7 @@ function GroupDetail() {
 
         <button
           onClick={() => setShowUpload(!showUpload)}
-          className="flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-lg shadow hover:bg-green-400"
+          className="btn-upload-files flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-lg shadow hover:bg-green-400"
         >
           <FaFileUpload className="text-xl" />
           <span>Upload Files</span>

@@ -49,6 +49,7 @@ import UserHandoverReport from './components/A/A01/UserHandoverReport';
 import EmptySamplesTable from './components/Reports/EmptySamplesTable';
 import GoogleAuthSuccess from './components/Registration/GoogleAuthSuccess';
 import { TourProvider } from './components/Tour/TourProvider';
+import RagPage from './components/RagPage';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -117,8 +118,8 @@ function App() {
             <Route path="/object/graph/:objectnameurl" element={isAuthenticated ? <ObjectGraph /> : <Navigate to="/start" />} />
             <Route path="/User_Handover_Report" element={isAuthenticated ?<UserHandoverReport />: <Navigate to="/start" />} />
             <Route path="/empty-samples" element={isAuthenticated ? <EmptySamplesTable /> : <Navigate to="/start" />}/>
-           
-        
+           <Route path="/rag" element={isAuthenticated ? <RagPage /> : <Navigate to="/start" />}/>
+
 
           </Route>
         </Routes>

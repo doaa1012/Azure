@@ -14,6 +14,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+#import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,7 +28,9 @@ SECRET_KEY = 'django-insecure-=c+vqy_d523l#sh3)l!=b^49s59rsbf&4x$x)74i#7lh*vr3ta
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# This changed 
+ALLOWED_HOSTS = ['mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net']
+
 
 # Application definition
 
@@ -47,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Ensure this is included for CORS
     'django.middleware.common.CommonMiddleware',
@@ -82,18 +87,20 @@ WSGI_APPLICATION = 'Dashboard.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',  # Use 'mssql' for the mssql-django backend
-        'NAME': 'RUB_CRC1625',  # Your database name
-        'USER': 'sa',  # SQL Server username
-        'PASSWORD': 'Sh1012@@@',  # The password for the 'sa' user
-        'HOST': 'localhost',  # Or '127.0.0.1'
-        'PORT': '1433',  # Default port for SQL Server
+        'ENGINE': 'mssql',
+        'NAME': 'rubdb',                     #  your database name
+        'USER': 'sqladmin',                 #  your SQL admin login
+        'PASSWORD': 'Sh1012@@@',            # your password
+        'HOST': 'rubsqlserver12345.database.windows.net',  #  full server host
+        'PORT': '1433',
         'OPTIONS': {
             'driver': 'ODBC Driver 17 for SQL Server',
-            'extra_params': 'TrustServerCertificate=yes;',
+            'extra_params': 'Encrypt=yes;TrustServerCertificate=no;',
         },
     }
 }
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -145,8 +152,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS and REST Framework Configuration
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # React dev server address
+    "https://mydjangoapp123-ayfjhwc8h9d3frg2.canadacentral-01.azurewebsites.net",
+    "http://localhost:5173"
 ]
+
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
 
@@ -231,4 +240,8 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 GOOGLE_CLIENT_ID = '903165517848-0rve51i125a5f7bnj2c394pss3hh8l21.apps.googleusercontent.com'
 GOOGLE_CLIENT_SECRET = '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'
 GOOGLE_REDIRECT_URI = 'http://localhost:8000/api/google-auth-callback/'
+
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 

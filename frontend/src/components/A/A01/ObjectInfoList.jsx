@@ -69,7 +69,7 @@ const handleStartTour = () => {
     const steps = [
       {
         target: '.project-overview-title',
-        content: 'This is the project overview for a specific research area.',
+        content: 'This is the project title.',
       },
       {
         target: '.my-items-button',
@@ -77,11 +77,11 @@ const handleStartTour = () => {
       },
       {
         target: '.handover-button',
-        content: 'Access the handover report for item transfers.',
+        content: 'Access the handover report for this project.',
       },
       {
         target: '.category-card',
-        content: 'Each tile represents a category of research objects or rubrics.',
+        content: 'Each title represents a category of research objects or material library.',
       },
       {
         target: '.related-object-card',
@@ -89,11 +89,11 @@ const handleStartTour = () => {
       },
       {
         target: '.btn-link-to-rubric',
-        content: 'Link an existing object to this rubric.',
+        content: 'Link an existing object to this project.',
       },
       {
         target: '.btn-create-container',
-        content: 'Create a new rubric container under this area.',
+        content: 'Create a new rubric container under this area and this project.',
       },
       {
         target: '.btn-ideas-plans',
@@ -101,11 +101,11 @@ const handleStartTour = () => {
       },
       {
         target: '.btn-create-object',
-        content: 'Create a new object of any type in this research area.',
+        content: 'Create a new object from the list of types in the RDMS in this research area.',
       },
       {
         target: '.btn-upload-files',
-        content: 'Upload files and associate them with this rubric.',
+        content: 'Upload files and associate under this area and this project.',
       }
     ];
     startTour(steps);

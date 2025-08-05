@@ -10,7 +10,7 @@ const ChatbotComponent = () => {
   const [input, setInput] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [chatMode, setChatMode] = useState('faq'); // Default mode
-  const navigate = useNavigate();  // ✅ Initialize React Router navigation
+  const navigate = useNavigate();  //  Initialize React Router navigation
 
   useEffect(() => {
     const tokenFromLocalStorage = localStorage.getItem('token');
@@ -19,35 +19,45 @@ const ChatbotComponent = () => {
   }, []);
 
   const handleSend = async () => {
-    if (!input) return;
-    setMessages((prev) => [...prev, { sender: 'user', text: input }]);
+  if (!input) return;
+  setMessages((prev) => [...prev, { sender: 'user', text: input }]);
 
-    let endpoint = chatMode === 'faq' ? '/api/chatbot_info/' : '/api/chatbot_cohere/';
+  let endpoint = chatMode === 'faq' ? '/api/chatbot_info/' : '/api/chatbot_cohere/';
 
-    try {
-      const response = await axios.post(`${config.BASE_URL}${endpoint}`, { message: input, mode: chatMode });
+  try {
+    const response = await axios.post(`${config.BASE_URL}${endpoint}`, {
+      message: input,
+      mode: chatMode,
+    });
 
-      if (chatMode === "search" && response.data.results) {
-        const searchResults = response.data.results.map((item) => (
-          <button 
-            key={item.objectid}
-            className="underline text-white font-semibold bg-blue-300 hover:bg-blue-700 rounded-lg px-3 py-2 mt-1 transition duration-200"
-            onClick={() => navigate(`/object/${item.objectid}`)} // ✅ Navigate in frontend
-          >
-            {item.objectname}
-          </button>
-        ));
-
-        setMessages((prev) => [...prev, { sender: 'bot', text: "🔍 Search Results:", results: searchResults }]);
-      } else {
-        setMessages((prev) => [...prev, { sender: 'bot', text: response.data.response }]);
-      }
-    } catch (error) {
-      setMessages((prev) => [...prev, { sender: 'bot', text: '❌ Server error. Try again later.' }]);
+    // Handle RAG redirect
+    if (chatMode === "rag" && response.data.redirect) {
+      navigate(response.data.redirect);  // ✅ Open new page
+      return;
     }
 
-    setInput('');
-  };
+    if (chatMode === "search" && response.data.results) {
+      const searchResults = response.data.results.map((item) => (
+        <button
+          key={item.objectid}
+          className="underline text-white font-semibold bg-blue-300 hover:bg-blue-700 rounded-lg px-3 py-2 mt-1 transition duration-200"
+          onClick={() => navigate(`/object/${item.objectid}`)}
+        >
+          {item.objectname}
+        </button>
+      ));
+
+      setMessages((prev) => [...prev, { sender: 'bot', text: "🔍 Search Results:", results: searchResults }]);
+    } else {
+      setMessages((prev) => [...prev, { sender: 'bot', text: response.data.response }]);
+    }
+  } catch (error) {
+    setMessages((prev) => [...prev, { sender: 'bot', text: '❌ Server error. Try again later.' }]);
+  }
+
+  setInput('');
+};
+
 
   return (
     <div className="fixed bottom-10 right-10 z-50">
@@ -65,10 +75,23 @@ const ChatbotComponent = () => {
           {/* AI Mode Selection */}
           <div className="p-2 bg-blue-100 border-b border-blue-300">
             <label className="text-sm font-semibold">Choose Chat Mode:</label>
-            <select className="ml-2 p-1 border rounded" value={chatMode} onChange={(e) => setChatMode(e.target.value)}>
+            <select
+  className="ml-2 p-1 border rounded"
+  value={chatMode}
+  onChange={(e) => {
+    const selectedMode = e.target.value;
+    setChatMode(selectedMode);
+    if (selectedMode === 'rag') {
+      navigate('/rag');  // ✅ immediately go to RagPage
+    }
+  }}
+>
+
               <option value="faq">FAQ (Basic Info)</option>
               <option value="scientific">Scientific AI (Materials Science)</option>
               <option value="search">Search Database</option>
+              <option value="rag">RAG (Document Assistant)</option>
+
             </select>
           </div>
 
