@@ -3,24 +3,16 @@ numpy>=1.25,<2.0
 scipy>=1.6.0,<1.14.0
 pandas>=1.5
 
-
 # Chemistry / Materials Science
-
 autoxrd
-
 
 
 # NLP / LLM-related
 sentence-transformers>=2.7.0
 cohere>=4.52
 chromadb>=0.5.0
-faiss-cpu
 # --- PDF Parsing ---
 PyMuPDF>=1.23.25
-
-
-
-
 
 
 # Web and API
@@ -34,12 +26,11 @@ httpx
 aiohttp
 requests
 
-
-
 # Utilities and misc
 tqdm
 pydoe2
 nptdms
+
 
 
 
