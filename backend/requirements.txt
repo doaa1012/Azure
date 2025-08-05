@@ -78,7 +78,7 @@ frozenlist==1.5.0
 fsspec==2024.2.0
 g3ar==0.5.7
 gast==0.6.0
-gensim==4.3.3
+gensim
 git-filter-repo==2.47.0
 gitdb==4.0.12
 GitPython==3.1.44
@@ -353,6 +353,7 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
 
 
