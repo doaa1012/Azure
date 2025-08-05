@@ -248,8 +248,6 @@ PySocks==1.7.1
 pysqa==0.2.3
 pyts==0.13.0
 pytz==2024.2
-pywin32==308
-pywin32-ctypes==0.2.3
 pyxtal==1.0.9
 PyYAML==6.0.2
 pyzmq==26.2.0
@@ -355,6 +353,7 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
 
 
