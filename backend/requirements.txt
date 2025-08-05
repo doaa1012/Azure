@@ -2,14 +2,12 @@
 numpy>=1.25,<2.0
 scipy>=1.6.0,<1.14.0
 pandas>=1.5
-seaborn
 
 
 # Chemistry / Materials Science
-ase>=3.25.0
-maggma
+
 autoxrd
-pyxtal
+
 
 
 # NLP / LLM-related
@@ -23,14 +21,7 @@ PyMuPDF>=1.23.25
 
 
 
-# Data handling and formats
-h5py>=3.6.0,<3.13.0
-h5io
-h5io-browser
-xmltodict
-zstandard
-zipp
-yarl
+
 
 # Web and API
 fastapi
@@ -47,15 +38,10 @@ requests
 
 # Utilities and misc
 tqdm
-python-dotenv
-wheel
-pyyaml
-joblib
 pydoe2
-pyfileindex
 nptdms
-pyts
-paramz
+
+
 
 
 
