@@ -246,11 +246,6 @@ PyQt5_sip==12.17.0
 pyreadline3==3.5.4
 PySocks==1.7.1
 pysqa==0.2.3
-python-box==7.3.2
-python-dateutil==2.9.0.post0
-python-decouple==3.8
-python-dotenv==1.1.0
-python3-openid==3.2.0
 pyts==0.13.0
 pytz==2024.2
 pywin32==308
@@ -360,5 +355,6 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
 
