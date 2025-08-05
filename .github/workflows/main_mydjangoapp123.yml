@@ -68,8 +68,9 @@ jobs:
         with:
           app-name: 'mydjangoapp123'
           slot-name: 'Production'
-           package: backend
+           
 
           
+
 
 
