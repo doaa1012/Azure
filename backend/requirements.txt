@@ -68,7 +68,7 @@ pyfileindex
 nptdms
 pyts
 paramz
-gpy
+
 
 # Optional or specific use cases
 captum
@@ -79,6 +79,7 @@ blosc2
 blis
 thinc
 hf-xet
+
 
 
 
