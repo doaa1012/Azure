@@ -227,12 +227,7 @@ pydeck==0.9.1
 pyDOE2==1.3.0
 pyfileindex==0.0.33
 pyglet==1.5.21
-Pygments==2.18.0
-pyiron-demonstrator-autonoexp @ file:///C:/Users/doaam/Downloads/PhD/Cold%20active%20learning/MArkus_code/autonomous_experiments
-pyiron-experimental @ file:///C:/Users/doaam/Downloads/PhD/Cold%20active%20learning/MArkus_code/pyiron_experimental
-pyiron_base==0.11.1
-pyiron_dataclasses==0.0.1
-pyiron_snippets==0.1.4
+
 PyJWT==2.10.1
 pymatgen==2025.5.2
 pymongo==4.10.1
@@ -365,4 +360,5 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
