@@ -86,7 +86,7 @@ glfw==2.9.0
 google-auth==2.40.3
 google-pasta==0.2.0
 googleapis-common-protos==1.70.0
-GPy==1.13.2
+
 greenlet==3.1.1
 grpcio==1.73.1
 gunicorn==23.0.0
@@ -353,6 +353,7 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
 
 
