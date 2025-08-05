@@ -79,6 +79,7 @@ blosc2
 blis
 thinc
 hf-xet
+django-cors-headers
 
 
 
