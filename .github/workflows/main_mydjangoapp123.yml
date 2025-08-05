@@ -69,12 +69,13 @@ jobs:
         with:
           app-name: 'mydjangoapp123'
           slot-name: 'Production'
-          action: restart
+
 
           
       - name: Restart App
         run: |
-          az webapp restart --name mydjangoapp123 --rg-rub-project
+          az webapp restart --name mydjangoapp123 ----resource-group rg-rub-project
+
 
 
 
