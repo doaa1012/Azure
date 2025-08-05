@@ -269,7 +269,7 @@ scandir==1.10.0
 scanf==1.5.2
 scikit-image==0.25.1
 scikit-learn==1.6.1
-scipy==1.16.0
+scipy
 seaborn==0.13.2
 selenium==4.34.2
 sentence-transformers==5.0.0
@@ -353,6 +353,7 @@ yarl==1.18.3
 zipp==3.21.0
 zstandard==0.23.0
 gunicorn
+
 
 
 
