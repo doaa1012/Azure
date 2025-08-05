@@ -72,6 +72,10 @@ jobs:
           action: restart
 
           
+      - name: Restart App
+        run: |
+          az webapp restart --name mydjangoapp123 --rg-rub-project
+
 
 
 
