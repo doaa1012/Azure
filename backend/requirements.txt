@@ -5,31 +5,26 @@ pandas>=1.5
 matplotlib
 seaborn
 
-# Machine Learning / AI
-scikit-learn
-tensorflow
-torch
-transformers
-gensim
-xgboost
-lightgbm
 
 # Chemistry / Materials Science
 ase>=3.25.0
-pymatgen>=2025.5.2
 maggma
 autoxrd
 pyxtal
-phonopy
+cohere
 
 
 # NLP / LLM-related
 langchain
-spacy
-sentence-transformers
-chromadb
+sentence-transformers>=2.7.0
+cohere>=4.52
+chromadb>=0.5.0
 faiss-cpu
-openai
+# --- PDF Parsing ---
+PyMuPDF>=1.23.25
+
+
+
 
 # Data handling and formats
 h5py>=3.6.0,<3.13.0
@@ -79,6 +74,7 @@ hf-xet
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
 django-cors-headers==3.14.0
+
 
 
 
