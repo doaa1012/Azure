@@ -21,8 +21,7 @@ maggma
 autoxrd
 pyxtal
 phonopy
-pylada
-pyxtal
+
 
 # NLP / LLM-related
 langchain
@@ -80,6 +79,7 @@ blosc2
 blis
 thinc
 hf-xet
+
 
 
 
