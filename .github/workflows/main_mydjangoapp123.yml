@@ -74,7 +74,8 @@ jobs:
           
       - name: Restart App
         run: |
-          az webapp restart --name mydjangoapp123 ----resource-group rg-rub-project
+          az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
