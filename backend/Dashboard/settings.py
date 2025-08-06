@@ -183,7 +183,7 @@ CORS_ALLOW_METHODS = [
     "PUT",
     "DELETE",
     "OPTIONS",
-    
+
 ]
 
 REST_FRAMEWORK = {
@@ -253,5 +253,4 @@ GOOGLE_REDIRECT_URI = 'http://localhost:8000/api/google-auth-callback/'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-CORS_ALLOW_ALL_ORIGINS = True
 
