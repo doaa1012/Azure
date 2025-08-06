@@ -151,24 +151,28 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS and REST Framework Configuration
 
-CORS_ALLOWED_ORIGINS = [
+
 CORS_ALLOWED_ORIGINS = [
     "https://purple-bay-04543970f.2.azurestaticapps.net",  #  your frontend
     "https://mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net",  #  your backend (optional, for internal redirects)
     "http://localhost:5173",  #  for local dev
 ]
 
-]
+
 
 
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
 
 CORS_ALLOW_HEADERS = [
-     'authorization',
-    'content-type',
-    'x-csrftoken',
-    'accept',
-    'origin',
+      "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 
 ]
 
@@ -179,6 +183,7 @@ CORS_ALLOW_METHODS = [
     "PUT",
     "DELETE",
     "OPTIONS",
+    
 ]
 
 REST_FRAMEWORK = {
