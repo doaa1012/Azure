@@ -21,7 +21,8 @@ JWT_EXP_DELTA_SECONDS = 3600 * 30  # 30 hours
 
 # Function to hash password using the ASP.NET API
 def hash_password(password):
-    api_url = 'http://localhost:5046/api/passwordhash/hash'
+    api_url = 'https://passwordhashapi123.azurewebsites.net/api/passwordhash/hash'
+
     payload = {
         'Password': password
     }

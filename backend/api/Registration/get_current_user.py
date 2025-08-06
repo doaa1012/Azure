@@ -22,7 +22,7 @@ from django.shortcuts import get_object_or_404
 from ..models import Aspnetusers, Aspnetuserlogins, Aspnetusertokens, Aspnetuserroles, Aspnetroles, Objectinfo
 
 def verify_password(plain_password, hashed_password):
-    api_url = 'http://localhost:5046/api/passwordhash/verify'
+    api_url = 'https://passwordhashapi123.azurewebsites.net/api/passwordhash/verify'
     payload = {
         'HashedPassword': hashed_password,
         'Password': plain_password

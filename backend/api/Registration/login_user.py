@@ -15,7 +15,8 @@ JWT_EXP_DELTA_SECONDS = 3600*30  # Token valid for 30 hour
 
 # Function to verify password with ASP.NET API
 def verify_password(plain_password, hashed_password):
-    api_url = 'http://localhost:5046/api/passwordhash/verify'
+    api_url = 'https://passwordhashapi123.azurewebsites.net/api/passwordhash/verify'
+
     payload = {
         'HashedPassword': hashed_password,
         'Password': plain_password
