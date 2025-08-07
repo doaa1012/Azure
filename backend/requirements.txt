@@ -23,7 +23,7 @@ social-auth-app-django>=5.4.0
 tqdm
 pydoe2
 nptdms
-
+gunicorn
 
 
 
