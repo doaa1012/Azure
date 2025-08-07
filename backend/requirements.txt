@@ -12,6 +12,9 @@ autoxrd
 # Web and API
 uvicorn
 django
+mssql-django
+pyodbc
+
 djangorestframework
 djangorestframework-simplejwt==5.2.2
 django-cors-headers==3.14.0
@@ -24,6 +27,7 @@ tqdm
 pydoe2
 nptdms
 gunicorn
+
 
 
 
