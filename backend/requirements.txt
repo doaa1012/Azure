@@ -27,6 +27,8 @@ tqdm
 pydoe2
 nptdms
 gunicorn
+whitenoise
+
 
 
 
