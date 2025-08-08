@@ -9,18 +9,12 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
 from pathlib import Path
 from datetime import timedelta
 import os
 
-#import dj_database_url
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-=c+vqy_d523l#sh3)l!=b^49s59rsbf&4x$x)74i#7lh*vr3ta'
@@ -28,143 +22,128 @@ SECRET_KEY = 'django-insecure-=c+vqy_d523l#sh3)l!=b^49s59rsbf&4x$x)74i#7lh*vr3ta
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# This changed 
-ALLOWED_HOSTS = ['mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net']
-
+ALLOWED_HOSTS = [
+    "mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net",
+    ".azurewebsites.net",
+    "localhost",
+    "127.0.0.1",
+]
 
 # Application definition
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'api.apps.ApiConfig',
-    'rest_framework',
-    'corsheaders',
-    'rest_framework_simplejwt.token_blacklist',
-    'social_django',
-    'django_extensions',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "api.apps.ApiConfig",
+    "rest_framework",
+    "corsheaders",
+    "rest_framework_simplejwt.token_blacklist",
+    "social_django",
+    "django_extensions",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Ensure this is included for CORS
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
+    "corsheaders.middleware.CorsMiddleware",  # must be first
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'Dashboard.urls'
+ROOT_URLCONF = "Dashboard.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'Dashboard.wsgi.application'
+WSGI_APPLICATION = "Dashboard.wsgi.application"
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'rubdb',                     #  your database name
-        'USER': 'sqladmin',                 #  your SQL admin login
-        'PASSWORD': 'Sh1012@@@',            # your password
-        'HOST': 'rubsqlserver12345.database.windows.net',  #  full server host
-        'PORT': '1433',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-            'extra_params': 'Encrypt=yes;TrustServerCertificate=no;',
-        },
+# Database (keep SQL Server, but allow fallback for Azure boot issues)
+if os.getenv("DB_ENGINE"):
+    DATABASES = {
+        "default": {
+            "ENGINE": os.environ["DB_ENGINE"],  # e.g., "mssql"
+            "NAME": os.environ["DB_NAME"],
+            "USER": os.environ["DB_USER"],
+            "PASSWORD": os.environ["DB_PASSWORD"],
+            "HOST": os.environ["DB_HOST"],
+            "PORT": os.environ.get("DB_PORT", "1433"),
+            "OPTIONS": {
+                "driver": os.environ.get("DB_DRIVER", "ODBC Driver 18 for SQL Server"),
+                "extra_params": "Encrypt=yes;TrustServerCertificate=no;",
+            },
+        }
     }
-}
-
-
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
-
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+# Static & Media files
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # for collectstatic on Azure
+# Remove STATICFILES_DIRS if you don’t have a /static folder
+# STATICFILES_DIRS = [BASE_DIR / "static"]
 
-STATIC_URL = 'static/'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
-# Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# CORS and REST Framework Configuration
-
-
+# CORS and CSRF for Azure Static Web App
 CORS_ALLOWED_ORIGINS = [
-    "https://purple-bay-04543970f.2.azurestaticapps.net",  #  your frontend
-    "https://mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net",  #  your backend (optional, for internal redirects)
-    "http://localhost:5173",  #  for local dev
+    "https://purple-bay-04543970f.2.azurestaticapps.net",
+    "http://localhost:5173",
 ]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://purple-bay-04543970f.2.azurestaticapps.net",
+    "https://mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net",
+]
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "None"
 
-
-
-
-CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, sessions)
-
+# Allow headers & methods
 CORS_ALLOW_HEADERS = [
-      "accept",
+    "accept",
     "accept-encoding",
     "authorization",
     "content-type",
@@ -173,84 +152,60 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
-
 ]
+CORS_ALLOW_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
 
-CORS_ALLOW_METHODS = [
-    "GET",
-    "POST",
-    "PATCH",
-    "PUT",
-    "DELETE",
-    "OPTIONS",
-
-]
-
+# REST Framework config
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',),  # Ensure the token type is Bearer
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# Additional settings for development
-if DEBUG:
-    INTERNAL_IPS = [
-        '127.0.0.1',
-    ]
-DEBUG = True
+# File upload path
+BASE_FILE_PATH = r"C:\Users\doaam\Downloads\PhD\backup\RUB_INF_CRC1625"
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
 
-# Custom file path for uploads or file storage
-BASE_FILE_PATH = 'C:\\Users\\doaam\\Downloads\\PhD\\backup\\RUB_INF_CRC1625'
-
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000  # Set to a very high value
-
+# Authentication backends
 AUTHENTICATION_BACKENDS = (
-    'social_core.backends.google.GoogleOAuth2',
-    'django.contrib.auth.backends.ModelBackend',
+    "social_core.backends.google.GoogleOAuth2",
+    "django.contrib.auth.backends.ModelBackend",
 )
 
+# Redirects
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
-# URL where users will be redirected after login
-LOGIN_REDIRECT_URL = '/'
+SOCIAL_AUTH_URL_NAMESPACE = "social"
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True  # Force HTTPS in Azure
 
-# URL where users will be redirected after logout
-LOGOUT_REDIRECT_URL = '/'
-
-# Additional settings
-SOCIAL_AUTH_URL_NAMESPACE = 'social'
-SOCIAL_AUTH_REDIRECT_IS_HTTPS = False  # Set to True if using HTTPS
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+# Email config
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'doaaintermath@gmail.com' 
-EMAIL_HOST_PASSWORD = 'ufskyebgjaxbqjqx'  
+EMAIL_HOST_USER = "doaaintermath@gmail.com"
+EMAIL_HOST_PASSWORD = "ufskyebgjaxbqjqx"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# settings.py
-GOOGLE_CLIENT_ID = '903165517848-0rve51i125a5f7bnj2c394pss3hh8l21.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = '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'
-GOOGLE_REDIRECT_URI = 'http://localhost:8000/api/google-auth-callback/'
-
-
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-
+# Google OAuth config
+GOOGLE_CLIENT_ID = "903165517848-0rve51i125a5f7bnj2c394pss3hh8l21.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "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"
+GOOGLE_REDIRECT_URI = "https://mydjangoapp123-ayfjhwc8h9d3frg2.westeurope-01.azurewebsites.net/api/google-auth-callback/"
