@@ -17,7 +17,8 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,14 +31,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Package backend folder only (exclude venv)
+      # Package ONLY the backend (exclude venv, node, static, big files)
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: |
-            backend
-            !backend/venv/
+            backend/**
+            !backend/venv/**
+            !backend/node_modules/**
+            !backend/package.json
+            !backend/package-lock.json
+            !backend/**/*.log
+            !backend/chroma_db/**
+            !backend/staticfiles/**
+            !backend/output.tar.gz
 
   deploy:
     runs-on: ubuntu-latest
@@ -65,10 +73,12 @@ jobs:
         with:
           app-name: 'mydjangoapp123'
           slot-name: 'Production'
-          package: backend/
+          package: ./backend
+          clean: true   # Ensures old files are removed before deploying new ones
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
