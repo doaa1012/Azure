@@ -65,10 +65,11 @@ jobs:
         with:
           app-name: 'mydjangoapp123'
           slot-name: 'Production'
-          package: ./backend
+          package: backend/
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
