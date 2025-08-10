@@ -19,25 +19,23 @@ jobs:
         with: { python-version: '3.11' }
 
       - name: Install dependencies
-        working-directory: backend
-        run: |
+         run: |
+          cd backend 
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v4
+      - name: Zip artifact for deployment
+        run: |
+          cd backend  
+          zip release.zip ./* -r
+
+      - name: Upload artifact for deployment jobs
+        uses: actions/upload-artifact@v3
         with:
           name: python-app
           path: |
-            backend/**
-            !backend/venv/**
-            !backend/node_modules/**
-            !backend/package.json
-            !backend/package-lock.json
-            !backend/**/*.log
-            !backend/chroma_db/**
-            !backend/staticfiles/**
-            !backend/output.tar.gz
+            backend/release.zip
+            !venv/
 
   deploy:
     runs-on: ubuntu-latest
@@ -71,6 +69,7 @@ jobs:
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
