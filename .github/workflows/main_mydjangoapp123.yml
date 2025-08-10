@@ -6,24 +6,17 @@ name: Build and deploy Python app to Azure Web App - mydjangoapp123
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+    permissions: { contents: read }
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
 
       - name: Install dependencies
         working-directory: backend
@@ -31,7 +24,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Package ONLY the backend (exclude venv, node, static, big files)
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
@@ -53,16 +45,17 @@ jobs:
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
-          path: ./backend
+      - uses: actions/download-artifact@v4
+        with: { name: python-app, path: ./backend }
 
-      - name: Azure login
-        uses: azure/login@v2
+      - name: List artifact (debug)
+        run: |
+          echo "=== backend ==="; ls -la ./backend
+          echo "=== backend/Dashboard ==="; ls -la ./backend/Dashboard || true
+          echo "=== backend/requirements.txt ==="; ls -la ./backend/requirements.txt || true
+
+      - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2CF9D55ABC214E43B6E83619F91DC8DD }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C0438554C61F43C88EE56E2B75697C90 }}
@@ -71,13 +64,14 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'mydjangoapp123'
-          slot-name: 'Production'
+          app-name: mydjangoapp123
+          slot-name: Production
           package: ./backend
-          clean: true   # Ensures old files are removed before deploying new ones
+          clean: true
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
