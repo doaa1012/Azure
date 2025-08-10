@@ -19,10 +19,11 @@ jobs:
         with: { python-version: '3.11' }
 
       - name: Install dependencies
-         run: |
-          cd backend 
+        run: |
+          cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
 
       - name: Zip artifact for deployment
         run: |
@@ -69,6 +70,7 @@ jobs:
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
 
 
