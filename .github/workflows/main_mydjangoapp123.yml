@@ -26,16 +26,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Zip artifact for deployment
-        run: |
-          cd backend
-          zip release.zip ./* -r
-
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: backend/release.zip
+          path: backend/
 
   deploy:
     runs-on: ubuntu-latest
@@ -49,12 +44,12 @@ jobs:
           name: python-app
           path: ./backend
 
-      - name: List artifact (debug)
+      - name: Debug - check artifact contents
         run: |
           echo "=== backend ==="
           ls -la ./backend
-          echo "=== backend/Dashboard ==="
-          ls -la ./backend/Dashboard || true
+          echo "=== backend/manage.py ==="
+          ls -la ./backend/manage.py || true
           echo "=== backend/requirements.txt ==="
           ls -la ./backend/requirements.txt || true
 
@@ -69,10 +64,11 @@ jobs:
         with:
           app-name: mydjangoapp123
           slot-name: Production
-          package: backend
+          package: ./backend
           clean: true
-
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
+
 
