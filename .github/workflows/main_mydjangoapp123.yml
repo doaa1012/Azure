@@ -1,7 +1,6 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python app to Azure Web App - mydjangoapp123
 
 on:
@@ -12,11 +11,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: { contents: read }
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+        with:
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
@@ -24,19 +26,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-
       - name: Zip artifact for deployment
         run: |
-          cd backend  
+          cd backend
           zip release.zip ./* -r
 
       - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            backend/release.zip
-            !venv/
+          path: backend/release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,13 +45,18 @@ jobs:
       contents: read
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: python-app, path: ./backend }
+        with:
+          name: python-app
+          path: ./backend
 
       - name: List artifact (debug)
         run: |
-          echo "=== backend ==="; ls -la ./backend
-          echo "=== backend/Dashboard ==="; ls -la ./backend/Dashboard || true
-          echo "=== backend/requirements.txt ==="; ls -la ./backend/requirements.txt || true
+          echo "=== backend ==="
+          ls -la ./backend
+          echo "=== backend/Dashboard ==="
+          ls -la ./backend/Dashboard || true
+          echo "=== backend/requirements.txt ==="
+          ls -la ./backend/requirements.txt || true
 
       - uses: azure/login@v2
         with:
@@ -70,11 +74,3 @@ jobs:
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
-
-
-
-
-
-
-
-
