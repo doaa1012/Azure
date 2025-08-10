@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
 name: Build and deploy Python app to Azure Web App - mydjangoapp123
 
 on:
@@ -11,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -20,17 +15,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies (CI sanity only)
+      - name: CI sanity (install deps)
         run: |
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Upload artifact for deployment jobs
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: backend/
+          path: backend/   # <- package root contains manage.py and requirements.txt
 
   deploy:
     runs-on: ubuntu-latest
@@ -44,18 +39,21 @@ jobs:
           name: python-app
           path: ./backend
 
-      - name: Debug - artifact contents
-        run: |
-          echo "=== backend ==="; ls -la ./backend
-          echo "=== backend/Dashboard ==="; ls -la ./backend/Dashboard
-          echo "=== backend/manage.py ==="; ls -la ./backend/manage.py
-          echo "=== backend/requirements.txt ==="; ls -la ./backend/requirements.txt
-
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2CF9D55ABC214E43B6E83619F91DC8DD }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C0438554C61F43C88EE56E2B75697C90 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_667C208615244A88A6C0017C0A7CB696 }}
+
+      # Ensure Oryx build happens in App Service and Django static files are collected
+      - name: Set app settings (once per app)
+        run: |
+          az webapp config appsettings set -g rg-rub-project -n mydjangoapp123 --settings \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+            ORYX_PYTHON_VERSION=3.11 \
+            DJANGO_SETTINGS_MODULE=Dashboard.settings \
+            PYTHONPATH=/home/site/wwwroot \
+            WEBSITES_PORT=8000
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -63,8 +61,13 @@ jobs:
           app-name: mydjangoapp123
           slot-name: Production
           package: ./backend
-          clean: true
+          # Start gunicorn after Oryx build
+          startup-command: >
+            gunicorn Dashboard.wsgi:application
+            --bind=0.0.0.0:8000
+            --timeout 600
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
+
 
