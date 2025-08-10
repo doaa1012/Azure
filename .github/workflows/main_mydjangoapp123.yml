@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies (CI sanity only)
         run: |
           cd backend
           python -m pip install --upgrade pip
@@ -44,14 +44,12 @@ jobs:
           name: python-app
           path: ./backend
 
-      - name: Debug - check artifact contents
+      - name: Debug - artifact contents
         run: |
-          echo "=== backend ==="
-          ls -la ./backend
-          echo "=== backend/manage.py ==="
-          ls -la ./backend/manage.py || true
-          echo "=== backend/requirements.txt ==="
-          ls -la ./backend/requirements.txt || true
+          echo "=== backend ==="; ls -la ./backend
+          echo "=== backend/Dashboard ==="; ls -la ./backend/Dashboard
+          echo "=== backend/manage.py ==="; ls -la ./backend/manage.py
+          echo "=== backend/requirements.txt ==="; ls -la ./backend/requirements.txt
 
       - uses: azure/login@v2
         with:
@@ -69,6 +67,4 @@ jobs:
 
       - name: Restart App
         run: az webapp restart --name mydjangoapp123 --resource-group rg-rub-project
-
-
 
